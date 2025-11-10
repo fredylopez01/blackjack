@@ -1,0 +1,107 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Metadatos de salas de juego
+model Room {
+  id            String   @id @default(uuid())
+  name          String
+  isPublic      Boolean  @default(true)
+  password      String?  // Hash si la sala es privada
+  maxPlayers    Int      @default(5)
+  minBet        Int      @default(10)
+  maxBet        Int      @default(1000)
+  status        RoomStatus @default(WAITING)
+  createdBy     String   // User ID del creador
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Configuración adicional en JSON
+  config        Json?    // {allowSpectators, autoStart, etc}
+  
+  // Relaciones
+  gameHistory   GameHistory[]
+  
+  @@index([status])
+  @@index([isPublic])
+  @@index([createdBy])
+}
+
+enum RoomStatus {
+  WAITING      // Esperando jugadores
+  PLAYING      // Partida en curso
+  FINISHED     // Partida finalizada
+  CLOSED       // Sala cerrada
+}
+
+// Historial consolidado de partidas
+model GameHistory {
+  id            String   @id @default(uuid())
+  roomId        String
+  gameEngineId  String   // ID de la partida en Game DB
+  startedAt     DateTime
+  finishedAt    DateTime?
+  totalRounds   Int      @default(0)
+  playersCount  Int
+  
+  // Resultado consolidado
+  results       Json     // [{userId, username, profit, roundsWon}]
+  
+  // Relaciones
+  room          Room     @relation(fields: [roomId], references: [id])
+  
+  @@index([roomId])
+  @@index([startedAt])
+}
+
+// Ranking global agregado
+model PlayerRanking {
+  userId        String   @id
+  username      String
+  totalGames    Int      @default(0)
+  gamesWon      Int      @default(0)
+  gamesLost     Int      @default(0)
+  totalProfit   Int      @default(0)
+  winRate       Float    @default(0)
+  rank          Int?     // Posición en el ranking
+  lastPlayed    DateTime?
+  updatedAt     DateTime @updatedAt
+  
+  @@index([totalProfit])
+  @@index([winRate])
+  @@index([rank])
+}
+
+// Cola de escrituras pendientes (cuando PostgreSQL cae)
+model PendingWrite {
+  id            String   @id @default(uuid())
+  operation     String   // CREATE_ROOM, UPDATE_RANKING, etc
+  data          Json     // Datos de la operación
+  attempts      Int      @default(0)
+  maxAttempts   Int      @default(5)
+  status        WriteStatus @default(PENDING)
+  error         String?
+  createdAt     DateTime @default(now())
+  processedAt   DateTime?
+  
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum WriteStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}

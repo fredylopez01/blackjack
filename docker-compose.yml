@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  # RabbitMQ - Cola de mensajes
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: blackjack-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbitmq_user
+      RABBITMQ_DEFAULT_PASS: rabbitmq_pass_2024
+    ports:
+      - "5672:5672" # Puerto AMQP
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - blackjack-network
+
+networks:
+  blackjack-network:
+    driver: bridge
+
+volumes:
+  rabbitmq_data:
