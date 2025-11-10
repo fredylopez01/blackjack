@@ -36,6 +36,12 @@ export class BlackjackGame {
       return false;
     }
 
+    // NO PERMITIR unirse si el juego ya está en progreso
+    if (this.status !== "WAITING" && this.status !== "FINISHED") {
+      socket.emit("error", { message: "Game already in progress" });
+      return false;
+    }
+
     const player = {
       ...playerInfo,
       hand: [],
@@ -59,18 +65,27 @@ export class BlackjackGame {
     // Notificar a todos
     this.broadcastGameState();
 
-    socket.emit("joined", {
+    socket.emit("room-joined", {
       roomId: this.roomId,
       minBet: this.minBet,
       maxBet: this.maxBet,
       players: this.getPlayersInfo(),
     });
 
-    logger.info(`Player ${playerInfo.username} added to game ${this.roomId}`);
+    logger.info(
+      `Player ${playerInfo.username} added to game ${this.roomId} (${this.players.size}/${this.maxPlayers})`
+    );
 
-    // Iniciar ronda si hay suficientes jugadores
+    // CAMBIO: Iniciar ronda solo si hay al menos 2 jugadores Y el estado es WAITING
     if (this.players.size >= 2 && this.status === "WAITING") {
-      this.startBettingPhase();
+      logger.info(`Starting betting phase with ${this.players.size} players`);
+      setTimeout(() => {
+        this.startBettingPhase();
+      }, 3000); // 3 segundos de espera para que todos se conecten
+    } else {
+      logger.info(
+        `Waiting for more players (${this.players.size}/${this.maxPlayers})`
+      );
     }
 
     return true;
@@ -95,12 +110,37 @@ export class BlackjackGame {
     this.broadcastGameState();
 
     logger.info(`Player ${player.username} removed from game ${this.roomId}`);
+
+    // Si no quedan jugadores, volver a WAITING
+    if (this.players.size === 0) {
+      this.status = "WAITING";
+      this.roundNumber = 0;
+      logger.info(`Room ${this.roomId} returned to WAITING state (no players)`);
+    }
+
+    // Si queda solo 1 jugador y está en juego, terminar la ronda
+    if (this.players.size === 1 && this.status === "PLAYING") {
+      logger.info(`Only 1 player left, ending round`);
+      if (this.roundTimeout) {
+        clearTimeout(this.roundTimeout);
+      }
+      await this.resolveRound();
+    }
   }
 
   /**
    * Inicia la fase de apuestas
    */
   startBettingPhase() {
+    // VALIDAR que haya al menos 2 jugadores
+    if (this.players.size < 2) {
+      logger.warn(
+        `Cannot start betting phase with only ${this.players.size} player(s)`
+      );
+      this.status = "WAITING";
+      return;
+    }
+
     if (this.status !== "WAITING" && this.status !== "FINISHED") {
       return;
     }
@@ -127,6 +167,8 @@ export class BlackjackGame {
       maxBet: this.maxBet,
       timeout: 30000, // 30 segundos para apostar
     });
+
+    logger.info(`Betting phase started for round ${this.roundNumber}`);
 
     // Timeout para iniciar el reparto automáticamente
     this.roundTimeout = setTimeout(() => {
@@ -165,12 +207,15 @@ export class BlackjackGame {
       amount,
     });
 
+    logger.info(`Player ${player.username} bet ${amount}`);
+
     // Si todos apostaron, iniciar reparto
     const allBetsPlaced = Array.from(this.players.values()).every(
       (p) => p.bet > 0
     );
 
     if (allBetsPlaced) {
+      logger.info("All players placed bets, starting dealing");
       if (this.roundTimeout) {
         clearTimeout(this.roundTimeout);
       }
@@ -184,6 +229,17 @@ export class BlackjackGame {
    * Inicia el reparto de cartas
    */
   async startDealing() {
+    // Filtrar solo jugadores que apostaron
+    const playersWithBets = Array.from(this.players.values()).filter(
+      (p) => p.bet > 0
+    );
+
+    if (playersWithBets.length === 0) {
+      logger.warn("No players placed bets, returning to waiting");
+      this.status = "WAITING";
+      return;
+    }
+
     this.status = "DEALING";
 
     // Verificar si el mazo necesita mezclarse
@@ -192,13 +248,8 @@ export class BlackjackGame {
       this.io.to(this.roomId).emit("deck-shuffled");
     }
 
-    // Repartir 2 cartas a cada jugador y al dealer
-    const playersArray = Array.from(this.players.values()).filter(
-      (p) => p.bet > 0
-    );
-
     // Primera carta a todos
-    for (const player of playersArray) {
+    for (const player of playersWithBets) {
       const card = this.deck.deal();
       if (card) player.hand.push(card);
     }
@@ -206,7 +257,7 @@ export class BlackjackGame {
     if (dealerFirstCard) this.dealerHand.push(dealerFirstCard);
 
     // Segunda carta a todos
-    for (const player of playersArray) {
+    for (const player of playersWithBets) {
       const card = this.deck.deal();
       if (card) player.hand.push(card);
     }
@@ -214,7 +265,7 @@ export class BlackjackGame {
     if (dealerSecondCard) this.dealerHand.push(dealerSecondCard);
 
     // Verificar blackjacks
-    for (const player of playersArray) {
+    for (const player of playersWithBets) {
       if (isBlackjack(player.hand)) {
         player.isBlackjack = true;
       }
@@ -222,7 +273,7 @@ export class BlackjackGame {
 
     // Broadcast del reparto (dealer muestra solo una carta)
     this.io.to(this.roomId).emit("cards-dealt", {
-      players: playersArray.map((p) => ({
+      players: playersWithBets.map((p) => ({
         userId: p.userId,
         username: p.username,
         hand: p.hand,
@@ -234,6 +285,8 @@ export class BlackjackGame {
         value: this.dealerHand[0].value,
       },
     });
+
+    logger.info(`Cards dealt to ${playersWithBets.length} players`);
 
     // Si el dealer tiene blackjack, terminar inmediatamente
     if (isBlackjack(this.dealerHand)) {
@@ -466,6 +519,8 @@ export class BlackjackGame {
       results,
     });
 
+    logger.info(`Round ${this.roundNumber} finished for room ${this.roomId}`);
+
     // Guardar ronda en BD y publicar evento
     await this.saveRound(results);
     await publishEvent("game.round.completed", {
@@ -474,10 +529,16 @@ export class BlackjackGame {
       results,
     });
 
-    // Iniciar nueva ronda después de 10 segundos
+    // CAMBIO: Iniciar nueva ronda solo si hay al menos 2 jugadores
     setTimeout(() => {
-      if (this.players.size > 0) {
+      if (this.players.size >= 2) {
         this.startBettingPhase();
+      } else {
+        logger.info(
+          `Not enough players (${this.players.size}), returning to WAITING`
+        );
+        this.status = "WAITING";
+        this.roundNumber = 0;
       }
     }, 10000);
   }
@@ -554,35 +615,16 @@ export class BlackjackGame {
 
       if (!session) return;
 
-      const increments = {
-        roundsPlayed: 1,
-      };
-
-      if (result === "win") increments.roundsWon = 1;
-      else if (result === "lose") increments.roundsLost = 1;
-      else if (result === "push") increments.roundsPush = 1;
-
-      // Ajustes numéricos: totalWon may increase by profit if positive
-      const updateFields = {
-        currentBalance:
-          this.players.get(userId)?.balance ??
-          session.currentBalance + (profit || 0),
-        totalBet: session.totalBet || 0,
-        totalWon: (session.totalWon || 0) + Math.max(0, profit || 0),
-      };
-
-      // Build numeric increments for Prisma's update
       const data = {
         roundsPlayed: { increment: 1 },
         totalWon: { increment: Math.max(0, profit || 0) },
-        currentBalance: updateFields.currentBalance,
+        currentBalance:
+          this.players.get(userId)?.balance ?? session.currentBalance,
       };
 
       if (result === "win") data.roundsWon = { increment: 1 };
       if (result === "lose") data.roundsLost = { increment: 1 };
       if (result === "push") data.roundsPush = { increment: 1 };
-      if (result === "blackjack") data.blackjacks = { increment: 1 };
-      if (result === "bust") data.busts = { increment: 1 };
 
       await prisma.playerSession.update({
         where: { id: session.id },
@@ -597,7 +639,6 @@ export class BlackjackGame {
     try {
       if (!this.gameSessionId) return;
 
-      // Crear la ronda
       const round = await prisma.round.create({
         data: {
           gameId: this.gameSessionId,
@@ -606,22 +647,18 @@ export class BlackjackGame {
         },
       });
 
-      // Por cada resultado, crear la mano (Hand) asociada
       for (const r of results) {
         try {
           const playerSession = await prisma.playerSession.findFirst({
             where: { gameId: this.gameSessionId, userId: r.userId },
           });
 
-          // Si no existe la sesión de jugador, saltarla
           if (!playerSession) continue;
 
-          // Determinar el resultado del hand para el enum
           let handResult = null;
           if (r.result === "win") handResult = "WIN";
           else if (r.result === "lose") handResult = "LOSE";
           else if (r.result === "push") handResult = "PUSH";
-          else if (r.result === "blackjack") handResult = "BLACKJACK";
 
           await prisma.hand.create({
             data: {
@@ -641,7 +678,6 @@ export class BlackjackGame {
         }
       }
 
-      // Actualizar contador de rondas en GameSession
       await prisma.gameSession.update({
         where: { id: this.gameSessionId },
         data: { totalRounds: this.roundNumber },
@@ -668,7 +704,6 @@ export class BlackjackGame {
     });
   }
 
-  // Getters públicos
   getPlayerCount() {
     return this.players.size;
   }

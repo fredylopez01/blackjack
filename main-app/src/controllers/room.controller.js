@@ -62,6 +62,7 @@ export async function createRoom(req, res) {
       minBet: room.minBet,
       maxBet: room.maxBet,
     });
+    logger.info(`Room ${room.id} registered in Game Engine`);
   } catch (error) {
     logger.error("Failed to notify Game Engine:", error);
   }
@@ -92,11 +93,9 @@ export async function listRooms(req, res) {
     if (!isDatabaseHealthy()) {
       // Modo degradado: intentar obtener del Game Engine
       try {
-        const response = await axios.get(
-          `${GAME_ENGINE_URL}/internal/rooms/active`
-        );
+        const response = await axios.get(`${GAME_ENGINE_URL}/internal/rooms`);
         return res.json({
-          rooms: response.data.rooms || [],
+          rooms: response.data || [],
           source: "game-engine",
           warning: "Main database unavailable. Showing active rooms only.",
         });
@@ -207,30 +206,17 @@ export async function joinRoom(req, res) {
       return res.status(403).json({ error: "Invalid password" });
     }
 
-    // Verificar capacidad con el Game Engine
-    try {
-      const response = await axios.post(
-        `${GAME_ENGINE_URL}/internal/rooms/${id}`,
-        {
-          userId: req.user.userId,
-          username: req.user.email,
-          balance: req.user.balance,
-        }
-      );
+    // SIMPLEMENTE VALIDAR Y RESPONDER
+    // El socket se encargará de unirse realmente
+    logger.info(`User ${req.user.id} validated to join room ${id}`);
 
-      res.json({
-        message: "Joined room successfully",
-        roomId: id,
-        gameEngineUrl: GAME_ENGINE_URL,
-        success: true,
-      });
-    } catch (error) {
-      if (error.response?.status === 400) {
-        return res.status(400).json({ error: error.response.data.error });
-      } else {
-        throw error;
-      }
-    }
+    res.json({
+      message: "Validation successful",
+      roomId: id,
+      minBet: room.minBet,
+      maxBet: room.maxBet,
+      success: true,
+    });
   } catch (error) {
     logger.error("Error joining room:", error);
     res.status(500).json({ error: "Failed to join room" });

@@ -32,11 +32,17 @@ export default function GamePage() {
     // El socket ya se conectó en el lobby
     // Solo necesitamos unirse a la sala
     // socketService.joinRoom(roomId);
+    // 3. Unirse via WebSocket
+    setupRoom();
 
     return () => {
       // No desconectar aquí, solo al salir del lobby
     };
   }, [roomId]);
+
+  async function setupRoom() {
+    roomId && (await socketService.joinRoom(roomId));
+  }
 
   const isMyTurn = currentPlayerTurn === user?.id;
 
@@ -52,7 +58,7 @@ export default function GamePage() {
             <p className="text-gray-300">Round: {roundNumber}</p>
           </div>
           <div className="flex items-center space-x-4">
-            <div className="bg-gray-800 px-4 py-2 rounded-lg">
+            <div className="flex items-center gap-2 bg-gray-800 px-4 py-2 rounded-lg">
               <p className="text-sm text-gray-400">Balance</p>
               <p className="text-xl font-bold text-green-400">
                 ${user?.balance}

@@ -20,6 +20,7 @@ export default function LobbyPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [connecting, setConnecting] = useState(false);
 
   const navigate = useNavigate();
   const { user, token, logout } = useAuthStore();
@@ -28,8 +29,12 @@ export default function LobbyPage() {
     loadRooms();
 
     // Conectar socket cuando entramos al lobby
-    if (token) {
-      socketService.connect(token);
+    if (token && !socketService.isConnected()) {
+      console.log("Connecting to game server...");
+      socketService.connect(token).catch((error) => {
+        console.error("Failed to connect socket:", error);
+        toast.error("Failed to connect to game server");
+      });
     }
 
     // Recargar salas cada 10 segundos
@@ -50,18 +55,25 @@ export default function LobbyPage() {
   };
 
   const handleJoinRoom = async (roomId: string) => {
+    if (connecting) return;
+
+    setConnecting(true);
     try {
-      const response = await roomsAPI.join(roomId);
-      toast.success("Joining room...");
+      // 1. Asegurarse de que el socket esté conectado
+      if (!socketService.isConnected()) {
+        await socketService.connect(token!);
+      }
 
-      // Conectar al juego via WebSocket
-      socketService.joinRoom(roomId);
+      // 2. Solicitar unirse a la sala via HTTP (validaciones)
+      await roomsAPI.join(roomId);
 
-      // Navegar a la página del juego
+      // 4. Navegar a la página del juego
       navigate(`/game/${roomId}`);
     } catch (error: any) {
       console.error("Error joining room:", error);
-      toast.error(error.response?.data?.error || "Failed to join room");
+      toast.error(error.message || "Failed to join room");
+    } finally {
+      setConnecting(false);
     }
   };
 
@@ -75,16 +87,16 @@ export default function LobbyPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-green-900 to-gray-900 p-6">
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-8">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-wrap justify-between items-center">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">
+            <h1 className="text-4xl font-semibold text-white mb-2">
               ♠️ Blackjack Lobby
             </h1>
             <p className="text-gray-300">Choose a table and start playing</p>
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="bg-gray-800 px-6 py-3 rounded-lg">
+            <div className="flex items-center gap-2 bg-gray-800 px-6 py-3 rounded-lg">
               <p className="text-sm text-gray-400">Balance</p>
               <p className="text-2xl font-bold text-green-400">
                 ${user?.balance || 0}
@@ -93,7 +105,7 @@ export default function LobbyPage() {
 
             <div className="bg-gray-800 px-6 py-3 rounded-lg">
               <p className="text-sm text-gray-400">Player</p>
-              <p className="text-lg font-semibold text-white">{user?.email}</p>
+              <p className="text-sm font-semibold text-white">{user?.email}</p>
             </div>
 
             <button
@@ -136,8 +148,7 @@ export default function LobbyPage() {
             {rooms.map((room) => (
               <div
                 key={room.id}
-                className="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition cursor-pointer"
-                onClick={() => handleJoinRoom(room.id)}
+                className="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition"
               >
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="text-xl font-bold text-white">{room.name}</h3>
@@ -180,13 +191,11 @@ export default function LobbyPage() {
                 </div>
 
                 <button
-                  className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleJoinRoom(room.id);
-                  }}
+                  className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => handleJoinRoom(room.id)}
+                  disabled={connecting}
                 >
-                  Join Table
+                  {connecting ? "Joining..." : "Join Table"}
                 </button>
               </div>
             ))}

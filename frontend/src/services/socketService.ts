@@ -3,24 +3,44 @@ import { useGameStore } from "../store/gameStore";
 import { useAuthStore } from "../store/authStore";
 import toast from "react-hot-toast";
 
-const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:3002";
+const WS_URL = "http://localhost:3002";
 
 class SocketService {
   private socket: Socket | null = null;
   private roomId: string | null = null;
+  private connectionPromise: Promise<void> | null = null;
 
-  connect(token: string): void {
+  connect(token: string): Promise<void> {
     if (this.socket?.connected) {
-      return;
+      return Promise.resolve();
     }
 
-    this.socket = io(WS_URL, {
-      path: "/game/socket.io",
-      auth: { token },
-      transports: ["websocket", "polling"],
+    if (this.connectionPromise) {
+      return this.connectionPromise;
+    }
+
+    this.connectionPromise = new Promise((resolve, reject) => {
+      this.socket = io(WS_URL, {
+        path: "/game/socket.io",
+        auth: { token },
+        transports: ["websocket", "polling"],
+      });
+
+      this.socket.on("connect", () => {
+        this.connectionPromise = null;
+        resolve();
+      });
+
+      this.socket.on("connect_error", (error) => {
+        console.error("Connection error:", error);
+        this.connectionPromise = null;
+        reject(error);
+      });
+
+      this.setupListeners();
     });
 
-    this.setupListeners();
+    return this.connectionPromise;
   }
 
   getSocketId(): string | null {
@@ -33,16 +53,38 @@ class SocketService {
       this.socket = null;
     }
     this.roomId = null;
+    this.connectionPromise = null;
   }
 
-  joinRoom(roomId: string): void {
+  async joinRoom(roomId: string): Promise<void> {
+    // Asegurarse de que el socket está conectado
     if (!this.socket?.connected) {
       toast.error("Not connected to game server");
-      return;
+      throw new Error("Socket not connected");
     }
 
     this.roomId = roomId;
-    this.socket.emit("join-room", { roomId });
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error("Join room timeout"));
+      }, 10000);
+
+      this.socket!.once("room-joined", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+
+      this.socket!.once("error", (data) => {
+        clearTimeout(timeout);
+        reject(new Error(data.message));
+      });
+
+      this.socket!.emit("join-room", {
+        roomId: this.roomId,
+        token: useAuthStore.getState().token,
+      });
+    });
   }
 
   placeBet(amount: number): void {
@@ -77,7 +119,6 @@ class SocketService {
 
     // Conexión exitosa
     this.socket.on("connect", () => {
-      console.log("✅ Connected to game server");
       toast.success("Connected to game server");
     });
 
@@ -95,7 +136,6 @@ class SocketService {
 
     // Unirse a sala exitosamente
     this.socket.on("room-joined", (data) => {
-      console.log("Joined room:", data);
       toast.success(`Joined room: ${data.roomId}`);
       useGameStore.getState().setRoomId(data.roomId);
     });

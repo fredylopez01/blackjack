@@ -4,9 +4,8 @@ import { logger } from "../utils/logger.js";
 import axios from "axios";
 import jwt from "jsonwebtoken";
 
-const AUTH_SERVICE_URL =
-  process.env.AUTH_SERVICE_URL || "http://localhost:3001";
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const MAIN_APP_URL = process.env.MAIN_APP_URL || "http://localhost:3001";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 /**
  * Autentica el token JWT
@@ -15,26 +14,39 @@ async function authenticateSocket(token) {
   try {
     // Verificar token localmente
     const decoded = jwt.verify(token, JWT_SECRET);
+    return {
+      userId: decoded.id,
+      username: decoded.email,
+      balance: decoded.balance || 1000,
+    };
+  } catch (error) {
+    logger.error("Socket authentication failed:", error);
+    return null;
+  }
+}
 
-    // Validar con Auth Service
-    const response = await axios.get(`${AUTH_SERVICE_URL}/api/users/profile`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+/**
+ * Carga la configuración de una sala desde el Main App
+ */
+async function loadRoomConfig(roomId) {
+  try {
+    const response = await axios.get(`${MAIN_APP_URL}/api/rooms/${roomId}`, {
       timeout: 5000,
     });
 
-    if (response.status === 200 && response.data) {
+    if (response.status === 200 && response.data.room) {
+      const room = response.data.room;
       return {
-        userId: response.data.id,
-        username: response.data.email,
-        balance: response.data.balance || 1000,
+        roomId: room.id,
+        maxPlayers: room.maxPlayers,
+        minBet: room.minBet,
+        maxBet: room.maxBet,
       };
     }
 
     return null;
   } catch (error) {
-    logger.error("Socket authentication failed:", error);
+    logger.error(`Failed to load room config for ${roomId}:`, error.message);
     return null;
   }
 }
@@ -69,22 +81,41 @@ export function setupSocketHandlers(io, gameManager) {
   // Conexión establecida
   io.on("connection", (socket) => {
     const { userId, username } = socket.data;
-    logger.info(`Socket connected: ${username} (${userId})`);
+    logger.info(`Socket connected: ${username} - ${socket.id}`);
 
     /**
      * Unirse a una sala de juego
      */
     socket.on("join-room", async (data) => {
       try {
-        const { roomId } = data;
-        const { userId, username, balance } = socket.data;
+        const { roomId, token } = data;
+        const decoded = jwt.verify(token, JWT_SECRET);
 
+        // CARGAR CONFIGURACIÓN DE LA SALA SI NO EXISTE
+        if (!gameManager.roomConfigs.has(roomId)) {
+          logger.info(
+            `Room ${roomId} not registered, loading config from Main App...`
+          );
+
+          const config = await loadRoomConfig(roomId);
+
+          if (!config) {
+            socket.emit("error", { message: "Room not found or unavailable" });
+            return;
+          }
+
+          // Registrar la sala con la configuración cargada
+          gameManager.registerRoom(config);
+          logger.info(`Room ${roomId} registered with config:`, config);
+        }
+
+        // Ahora intentar asignar al jugador
         const success = await gameManager.assignPlayerToRoom(
           roomId,
           {
-            userId,
-            username,
-            balance,
+            userId: decoded.id,
+            username: decoded.email,
+            balance: 1000,
             socketId: socket.id,
           },
           socket
@@ -96,10 +127,12 @@ export function setupSocketHandlers(io, gameManager) {
             roomId,
             message: "Successfully joined the game",
           });
+          logger.info(`User ${username} successfully joined room ${roomId}`);
         } else {
           socket.emit("error", {
             message: "Failed to join room",
           });
+          logger.warn(`User ${username} failed to join room ${roomId}`);
         }
       } catch (error) {
         logger.error("Error joining room:", error);

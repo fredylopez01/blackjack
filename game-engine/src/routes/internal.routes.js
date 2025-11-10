@@ -82,50 +82,6 @@ router.get("/rooms/:roomId", (req, res) => {
 });
 
 /**
- * Unirse a una sala mediante HTTP (útil si el cliente ya abrió socket y envía socketId)
- * Body: { socketId, userId, username, balance }
- */
-router.post("/rooms/:roomId/join", async (req, res) => {
-  try {
-    const { roomId } = req.params;
-    const { socketId, userId, username, balance } = req.body;
-
-    if (!socketId || !userId) {
-      return res
-        .status(400)
-        .json({ error: "socketId and userId are required" });
-    }
-
-    // Obtener socket por id
-    const socket = gameManager.io.sockets.sockets.get(socketId);
-
-    if (!socket) {
-      return res.status(404).json({ error: "Socket not found" });
-    }
-
-    // Intentar asignar jugador a la sala
-    const success = await gameManager.assignPlayerToRoom(
-      roomId,
-      { userId, username, balance, socketId },
-      socket
-    );
-
-    if (!success) {
-      return res.status(400).json({ error: "Failed to join room" });
-    }
-
-    // Marcar en el socket que está en la sala
-    socket.data = socket.data || {};
-    socket.data.roomId = roomId;
-
-    return res.json({ success: true, roomId });
-  } catch (error) {
-    logger.error("Error in HTTP join-room:", error);
-    return res.status(500).json({ error: "Failed to join room" });
-  }
-});
-
-/**
  * Endpoint de métricas y estado del servicio
  */
 router.get("/metrics", (req, res) => {

@@ -26,10 +26,10 @@ export default function LoginPage() {
         const profile = await authAPI.getProfile();
 
         login(response.token, {
-          id: profile.id,
-          email: profile.email,
-          role: profile.role || "user",
-          balance: profile.balance || 1000,
+          id: profile.data.user.id,
+          email: profile.data.user.email,
+          role: profile.data.user.role || "user",
+          balance: profile.data.user.balance || 1000,
         });
 
         toast.success("Welcome back!");
