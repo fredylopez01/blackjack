@@ -1,0 +1,54 @@
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import { useAuthStore } from "./store/authStore";
+import LoginPage from "./pages/LoginPage";
+import LobbyPage from "./pages/LobbyPage";
+import GamePage from "./pages/GamePage";
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: "#1f2937",
+            color: "#fff",
+          },
+        }}
+      />
+
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route
+          path="/lobby"
+          element={
+            <ProtectedRoute>
+              <LobbyPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/game/:roomId"
+          element={
+            <ProtectedRoute>
+              <GamePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
