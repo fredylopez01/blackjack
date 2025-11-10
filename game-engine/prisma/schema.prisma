@@ -1,0 +1,130 @@
+// Schema para la base de datos del Game Engine
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Historial completo de partidas
+model GameSession {
+  id            String   @id @default(uuid())
+  roomId        String
+  startedAt     DateTime @default(now())
+  finishedAt    DateTime?
+  status        GameStatus @default(IN_PROGRESS)
+  
+  // Configuración del juego
+  minBet        Int
+  maxBet        Int
+  deckCount     Int      @default(6)
+  
+  // Resultados
+  totalRounds   Int      @default(0)
+  
+  // Relaciones
+  rounds        Round[]
+  players       PlayerSession[]
+  
+  @@index([roomId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+enum GameStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+// Sesión de jugador en una partida
+model PlayerSession {
+  id            String   @id @default(uuid())
+  gameId        String
+  userId        String
+  username      String
+  joinedAt      DateTime @default(now())
+  leftAt        DateTime?
+  
+  // Balance durante la sesión
+  initialBalance Int
+  currentBalance Int
+  totalBet       Int     @default(0)
+  totalWon       Int     @default(0)
+  
+  // Estadísticas
+  roundsPlayed   Int     @default(0)
+  roundsWon      Int     @default(0)
+  roundsLost     Int     @default(0)
+  roundsPush     Int     @default(0)
+  blackjacks     Int     @default(0)
+  busts          Int     @default(0)
+  
+  // Relaciones
+  game           GameSession @relation(fields: [gameId], references: [id])
+  hands          Hand[]
+  
+  @@index([gameId])
+  @@index([userId])
+}
+
+// Ronda de juego
+model Round {
+  id            String   @id @default(uuid())
+  gameId        String
+  roundNumber   Int
+  startedAt     DateTime @default(now())
+  finishedAt    DateTime?
+  
+  // Mano del dealer
+  dealerHand    Json     // {cards: [], value: number, isBusted: boolean}
+  dealerResult  String?  // WIN, BUST, BLACKJACK
+  
+  // Relaciones
+  game          GameSession @relation(fields: [gameId], references: [id])
+  hands         Hand[]
+  
+  @@index([gameId])
+  @@index([roundNumber])
+}
+
+// Mano de jugador en una ronda
+model Hand {
+  id            String   @id @default(uuid())
+  roundId       String
+  playerId      String
+  
+  // Estado de la mano
+  cards         Json     // [{suit, rank, value}]
+  bet           Int
+  result        HandResult?
+  payout        Int      @default(0)
+  
+  // Flags
+  isBlackjack   Boolean  @default(false)
+  isBusted      Boolean  @default(false)
+  isDoubled     Boolean  @default(false)
+  isSplit       Boolean  @default(false)
+  isStanding    Boolean  @default(false)
+  
+  // Valor de la mano
+  value         Int      @default(0)
+  
+  createdAt     DateTime @default(now())
+  
+  // Relaciones
+  round         Round        @relation(fields: [roundId], references: [id])
+  player        PlayerSession @relation(fields: [playerId], references: [id])
+  
+  @@index([roundId])
+  @@index([playerId])
+}
+
+enum HandResult {
+  WIN
+  LOSE
+  PUSH
+  BLACKJACK
+}
