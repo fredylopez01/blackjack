@@ -1,3 +1,4 @@
+// game-engine/src/game/BlackjackGame.js
 import { Server } from "socket.io";
 import { Deck, calculateHandValue, isBlackjack, isBusted } from "./Deck.js";
 import { prisma } from "../index.js";
@@ -22,9 +23,6 @@ export class BlackjackGame {
     this.roundTimeout = null;
   }
 
-  /**
-   * Agrega un jugador a la partida
-   */
   async addPlayer(playerInfo, socket) {
     if (this.players.size >= this.maxPlayers) {
       socket.emit("error", { message: "Room is full" });
@@ -36,9 +34,15 @@ export class BlackjackGame {
       return false;
     }
 
-    // NO PERMITIR unirse si el juego ya está en progreso
-    if (this.status !== "WAITING" && this.status !== "FINISHED") {
-      socket.emit("error", { message: "Game already in progress" });
+    // PERMITIR unirse en WAITING, BETTING y FINISHED
+    if (
+      this.status !== "WAITING" &&
+      this.status !== "BETTING" &&
+      this.status !== "FINISHED"
+    ) {
+      socket.emit("error", {
+        message: "Game in progress, wait for next round",
+      });
       return false;
     }
 
@@ -73,27 +77,13 @@ export class BlackjackGame {
     });
 
     logger.info(
-      `Player ${playerInfo.username} added to game ${this.roomId} (${this.players.size}/${this.maxPlayers})`
+      `Player ${playerInfo.username} joined game ${this.roomId} (${this.players.size}/${this.maxPlayers})`
     );
 
-    // CAMBIO: Iniciar ronda solo si hay al menos 2 jugadores Y el estado es WAITING
-    if (this.players.size >= 2 && this.status === "WAITING") {
-      logger.info(`Starting betting phase with ${this.players.size} players`);
-      setTimeout(() => {
-        this.startBettingPhase();
-      }, 3000); // 3 segundos de espera para que todos se conecten
-    } else {
-      logger.info(
-        `Waiting for more players (${this.players.size}/${this.maxPlayers})`
-      );
-    }
-
+    // NO iniciar automáticamente - esperar comando explícito
     return true;
   }
 
-  /**
-   * Remueve un jugador de la partida
-   */
   async removePlayer(userId, socketId) {
     const player = this.players.get(userId);
 
@@ -101,7 +91,6 @@ export class BlackjackGame {
       return;
     }
 
-    // Actualizar sesión en BD
     await this.updatePlayerSession(userId, false);
 
     this.players.delete(userId);
@@ -111,14 +100,12 @@ export class BlackjackGame {
 
     logger.info(`Player ${player.username} removed from game ${this.roomId}`);
 
-    // Si no quedan jugadores, volver a WAITING
     if (this.players.size === 0) {
       this.status = "WAITING";
       this.roundNumber = 0;
-      logger.info(`Room ${this.roomId} returned to WAITING state (no players)`);
+      logger.info(`Room ${this.roomId} returned to WAITING (no players)`);
     }
 
-    // Si queda solo 1 jugador y está en juego, terminar la ronda
     if (this.players.size === 1 && this.status === "PLAYING") {
       logger.info(`Only 1 player left, ending round`);
       if (this.roundTimeout) {
@@ -128,21 +115,17 @@ export class BlackjackGame {
     }
   }
 
-  /**
-   * Inicia la fase de apuestas
-   */
   startBettingPhase() {
-    // VALIDAR que haya al menos 2 jugadores
     if (this.players.size < 2) {
       logger.warn(
         `Cannot start betting phase with only ${this.players.size} player(s)`
       );
-      this.status = "WAITING";
-      return;
+      return false;
     }
 
     if (this.status !== "WAITING" && this.status !== "FINISHED") {
-      return;
+      logger.warn(`Cannot start betting from status: ${this.status}`);
+      return false;
     }
 
     this.status = "BETTING";
@@ -165,7 +148,7 @@ export class BlackjackGame {
       roundNumber: this.roundNumber,
       minBet: this.minBet,
       maxBet: this.maxBet,
-      timeout: 30000, // 30 segundos para apostar
+      timeout: 30000,
     });
 
     logger.info(`Betting phase started for round ${this.roundNumber}`);
@@ -174,11 +157,10 @@ export class BlackjackGame {
     this.roundTimeout = setTimeout(() => {
       this.startDealing();
     }, 30000);
+
+    return true;
   }
 
-  /**
-   * Procesa una apuesta de un jugador
-   */
   async placeBet(userId, amount) {
     if (this.status !== "BETTING") {
       return false;
@@ -188,6 +170,10 @@ export class BlackjackGame {
 
     if (!player) {
       return false;
+    }
+
+    if (player.bet > 0) {
+      return false; // Ya apostó
     }
 
     if (amount < this.minBet || amount > this.maxBet) {
@@ -225,11 +211,7 @@ export class BlackjackGame {
     return true;
   }
 
-  /**
-   * Inicia el reparto de cartas
-   */
   async startDealing() {
-    // Filtrar solo jugadores que apostaron
     const playersWithBets = Array.from(this.players.values()).filter(
       (p) => p.bet > 0
     );
@@ -242,7 +224,6 @@ export class BlackjackGame {
 
     this.status = "DEALING";
 
-    // Verificar si el mazo necesita mezclarse
     if (this.deck.needsShuffle()) {
       this.deck = new Deck(6);
       this.io.to(this.roomId).emit("deck-shuffled");
@@ -271,7 +252,7 @@ export class BlackjackGame {
       }
     }
 
-    // Broadcast del reparto (dealer muestra solo una carta)
+    // Broadcast del reparto
     this.io.to(this.roomId).emit("cards-dealt", {
       players: playersWithBets.map((p) => ({
         userId: p.userId,
@@ -288,28 +269,22 @@ export class BlackjackGame {
 
     logger.info(`Cards dealt to ${playersWithBets.length} players`);
 
-    // Si el dealer tiene blackjack, terminar inmediatamente
     if (isBlackjack(this.dealerHand)) {
       await this.dealerTurn();
       return;
     }
 
-    // Iniciar turnos de jugadores
     setTimeout(() => {
       this.status = "PLAYING";
       this.nextPlayerTurn();
     }, 2000);
   }
 
-  /**
-   * Avanza al siguiente turno de jugador
-   */
   nextPlayerTurn() {
     const playersArray = Array.from(this.players.values()).filter(
       (p) => p.bet > 0
     );
 
-    // Buscar el siguiente jugador activo
     while (this.currentPlayerIndex < playersArray.length) {
       const player = playersArray[this.currentPlayerIndex];
 
@@ -322,7 +297,6 @@ export class BlackjackGame {
           timeout: 30000,
         });
 
-        // Timeout para stand automático
         this.roundTimeout = setTimeout(() => {
           this.stand(player.userId);
         }, 30000);
@@ -333,13 +307,9 @@ export class BlackjackGame {
       this.currentPlayerIndex++;
     }
 
-    // Todos los jugadores terminaron, turno del dealer
     this.dealerTurn();
   }
 
-  /**
-   * Jugador pide carta
-   */
   async hit(userId) {
     if (this.status !== "PLAYING") {
       return false;
@@ -364,7 +334,6 @@ export class BlackjackGame {
       value,
     });
 
-    // Verificar si se pasó
     if (isBusted(player.hand)) {
       player.isBusted = true;
       player.isActive = false;
@@ -385,9 +354,6 @@ export class BlackjackGame {
     return true;
   }
 
-  /**
-   * Jugador se planta
-   */
   async stand(userId) {
     if (this.status !== "PLAYING") {
       return false;
@@ -416,13 +382,9 @@ export class BlackjackGame {
     return true;
   }
 
-  /**
-   * Turno del dealer
-   */
   async dealerTurn() {
     this.status = "DEALER_TURN";
 
-    // Revelar carta oculta del dealer
     this.io.to(this.roomId).emit("dealer-reveal", {
       hand: this.dealerHand,
       value: calculateHandValue(this.dealerHand),
@@ -430,7 +392,6 @@ export class BlackjackGame {
 
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Dealer debe pedir hasta 17
     while (calculateHandValue(this.dealerHand) < 17) {
       const card = this.deck.deal();
       if (!card) break;
@@ -446,13 +407,9 @@ export class BlackjackGame {
       await new Promise((resolve) => setTimeout(resolve, 1500));
     }
 
-    // Determinar ganadores y pagar
     await this.resolveRound();
   }
 
-  /**
-   * Resuelve la ronda y determina ganadores
-   */
   async resolveRound() {
     this.status = "FINISHED";
 
@@ -470,7 +427,6 @@ export class BlackjackGame {
       let payout = 0;
 
       if (player.isBlackjack && !dealerBlackjack) {
-        // Blackjack paga 3:2
         result = "win";
         payout = player.bet + Math.floor(player.bet * 1.5);
       } else if (player.isBusted) {
@@ -503,11 +459,9 @@ export class BlackjackGame {
         balance: player.balance,
       });
 
-      // Actualizar estadísticas del jugador
       await this.updatePlayerStats(player.userId, result, payout - player.bet);
     }
 
-    // Broadcast de resultados
     this.io.to(this.roomId).emit("round-finished", {
       roundNumber: this.roundNumber,
       dealer: {
@@ -521,7 +475,6 @@ export class BlackjackGame {
 
     logger.info(`Round ${this.roundNumber} finished for room ${this.roomId}`);
 
-    // Guardar ronda en BD y publicar evento
     await this.saveRound(results);
     await publishEvent("game.round.completed", {
       roomId: this.roomId,
@@ -529,21 +482,16 @@ export class BlackjackGame {
       results,
     });
 
-    // CAMBIO: Iniciar nueva ronda solo si hay al menos 2 jugadores
+    // Iniciar nueva ronda solo si hay 2+ jugadores
     setTimeout(() => {
       if (this.players.size >= 2) {
         this.startBettingPhase();
       } else {
-        logger.info(
-          `Not enough players (${this.players.size}), returning to WAITING`
-        );
+        logger.info(`Not enough players, returning to WAITING`);
         this.status = "WAITING";
-        this.roundNumber = 0;
       }
     }, 10000);
   }
-
-  // Métodos auxiliares
 
   async createGameSession() {
     try {
@@ -692,6 +640,11 @@ export class BlackjackGame {
       userId: p.userId,
       username: p.username,
       balance: p.balance,
+      bet: p.bet || 0,
+      hand: p.hand || [],
+      isStanding: p.isStanding || false,
+      isBusted: p.isBusted || false,
+      isBlackjack: p.isBlackjack || false,
     }));
   }
 

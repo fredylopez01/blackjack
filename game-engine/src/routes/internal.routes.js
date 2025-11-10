@@ -44,6 +44,8 @@ router.post("/rooms", async (req, res) => {
 router.get("/rooms", (req, res) => {
   try {
     const rooms = gameManager.getActiveRooms();
+    console.log(rooms);
+
     res.json(rooms);
   } catch (error) {
     logger.error("Error getting active rooms:", error);

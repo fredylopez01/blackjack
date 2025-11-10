@@ -1,3 +1,4 @@
+// game-engine/src/socket/socketHandlers.js
 import { Server } from "socket.io";
 import { GameManager } from "../game/GameManager.js";
 import { logger } from "../utils/logger.js";
@@ -12,7 +13,6 @@ const JWT_SECRET = process.env.JWT_SECRET;
  */
 async function authenticateSocket(token) {
   try {
-    // Verificar token localmente
     const decoded = jwt.verify(token, JWT_SECRET);
     return {
       userId: decoded.id,
@@ -81,7 +81,7 @@ export function setupSocketHandlers(io, gameManager) {
   // Conexión establecida
   io.on("connection", (socket) => {
     const { userId, username } = socket.data;
-    logger.info(`Socket connected: ${username} - ${socket.id}`);
+    logger.info(`Socket connected: ${username} (${userId}) - ${socket.id}`);
 
     /**
      * Unirse a una sala de juego
@@ -91,11 +91,11 @@ export function setupSocketHandlers(io, gameManager) {
         const { roomId, token } = data;
         const decoded = jwt.verify(token, JWT_SECRET);
 
+        logger.info(`User ${decoded.email} attempting to join room ${roomId}`);
+
         // CARGAR CONFIGURACIÓN DE LA SALA SI NO EXISTE
         if (!gameManager.roomConfigs.has(roomId)) {
-          logger.info(
-            `Room ${roomId} not registered, loading config from Main App...`
-          );
+          logger.info(`Room ${roomId} not registered, loading config...`);
 
           const config = await loadRoomConfig(roomId);
 
@@ -104,12 +104,11 @@ export function setupSocketHandlers(io, gameManager) {
             return;
           }
 
-          // Registrar la sala con la configuración cargada
           gameManager.registerRoom(config);
-          logger.info(`Room ${roomId} registered with config:`, config);
+          logger.info(`Room ${roomId} registered:`, config);
         }
 
-        // Ahora intentar asignar al jugador
+        // Intentar asignar al jugador
         const success = await gameManager.assignPlayerToRoom(
           roomId,
           {
@@ -127,16 +126,61 @@ export function setupSocketHandlers(io, gameManager) {
             roomId,
             message: "Successfully joined the game",
           });
-          logger.info(`User ${username} successfully joined room ${roomId}`);
+          logger.info(`✅ User ${username} joined room ${roomId}`);
         } else {
           socket.emit("error", {
             message: "Failed to join room",
           });
-          logger.warn(`User ${username} failed to join room ${roomId}`);
+          logger.warn(`❌ User ${username} failed to join room ${roomId}`);
         }
       } catch (error) {
         logger.error("Error joining room:", error);
         socket.emit("error", { message: "Failed to join room" });
+      }
+    });
+
+    /**
+     * Iniciar juego (solo creador)
+     */
+    socket.on("start-game", async () => {
+      try {
+        const { userId, roomId } = socket.data;
+
+        if (!roomId) {
+          socket.emit("error", { message: "Not in a room" });
+          return;
+        }
+
+        const game = gameManager.getGame(roomId);
+
+        if (!game) {
+          socket.emit("error", { message: "Game not found" });
+          return;
+        }
+
+        logger.info(
+          `User ${userId} requesting to start game in room ${roomId}`
+        );
+
+        // Por ahora, permitir que cualquiera inicie (puedes agregar validación de creador)
+        // TODO: Verificar que el usuario sea el creador de la sala
+
+        if (game.getPlayerCount() < 2) {
+          socket.emit("error", { message: "Need at least 2 players to start" });
+          return;
+        }
+
+        if (game.getStatus() !== "WAITING") {
+          socket.emit("error", { message: "Game already started" });
+          return;
+        }
+
+        // Iniciar fase de apuestas
+        game.startBettingPhase();
+        logger.info(`🎮 Game started in room ${roomId}`);
+      } catch (error) {
+        logger.error("Error starting game:", error);
+        socket.emit("error", { message: "Failed to start game" });
       }
     });
 
@@ -165,6 +209,7 @@ export function setupSocketHandlers(io, gameManager) {
           socket.emit("bet-placed-success", {
             amount: data.amount,
           });
+          logger.info(`💰 User ${userId} bet ${data.amount}`);
         } else {
           socket.emit("error", {
             message: "Invalid bet amount or insufficient balance",

@@ -1,17 +1,22 @@
 // frontend/src/pages/GamePage.tsx
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useGameStore } from "../store/gameStore";
 import { useAuthStore } from "../store/authStore";
 import { socketService } from "../services/socketService";
+import { roomsAPI } from "../services/api";
 import Card from "../components/Card";
 import BettingControls from "../components/BettingControls";
+import toast from "react-hot-toast";
 import GameControls from "../components/GameControls";
 
 export default function GamePage() {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const [roomInfo, setRoomInfo] = useState<any>(null);
+  const [isCreator, setIsCreator] = useState(false);
+
   const {
     status,
     roundNumber,
@@ -29,22 +34,50 @@ export default function GamePage() {
       return;
     }
 
-    // El socket ya se conectó en el lobby
-    // Solo necesitamos unirse a la sala
-    // socketService.joinRoom(roomId);
-    // 3. Unirse via WebSocket
     setupRoom();
 
     return () => {
-      // No desconectar aquí, solo al salir del lobby
+      // No desconectar aquí, solo limpiar
     };
   }, [roomId]);
 
   async function setupRoom() {
-    roomId && (await socketService.joinRoom(roomId));
+    try {
+      // 1. Cargar info de la sala
+      const response = await roomsAPI.get(roomId!);
+      setRoomInfo(response.room);
+      setIsCreator(response.room.createdBy === user?.id);
+
+      // 2. Unirse via WebSocket (esto ya se hace desde el lobby)
+      // Solo nos aseguramos de que el socket esté conectado
+      if (!socketService.isConnected()) {
+        await socketService.connect(useAuthStore.getState().token!);
+      }
+
+      await socketService.joinRoom(roomId!);
+    } catch (error: any) {
+      console.error("Error setting up room:", error);
+      toast.error(error.message || "Failed to join room");
+      navigate("/lobby");
+    }
   }
 
+  const handleStartGame = () => {
+    if (!isCreator) {
+      toast.error("Only room creator can start the game");
+      return;
+    }
+
+    if (players.length < 2) {
+      toast.error("Need at least 2 players to start");
+      return;
+    }
+
+    socketService.startGame();
+  };
+
   const isMyTurn = currentPlayerTurn === user?.id;
+  const canStartGame = isCreator && status === "WAITING" && players.length >= 2;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-green-900 to-gray-900 p-6">
@@ -53,9 +86,14 @@ export default function GamePage() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-white">
-              Room: {roomId?.slice(0, 8)}
+              {roomInfo?.name || "Game Room"}
             </h1>
-            <p className="text-gray-300">Round: {roundNumber}</p>
+            <p className="text-gray-300">
+              Room ID: {roomId?.slice(0, 8)} | Round: {roundNumber}
+            </p>
+            <p className="text-sm text-gray-400">
+              Players: {players.length}/{roomInfo?.maxPlayers || 5}
+            </p>
           </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center gap-2 bg-gray-800 px-4 py-2 rounded-lg">
@@ -79,61 +117,158 @@ export default function GamePage() {
 
       {/* Mesa de juego */}
       <div className="max-w-7xl mx-auto">
-        {/* Dealer */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-bold text-white mb-4">Dealer</h2>
-          <div className="flex space-x-2 mb-4">
-            {dealerHand.map((card, i) => (
-              <Card key={i} card={card} />
-            ))}
+        {/* Start Game Button (solo para el creador cuando hay suficientes jugadores) */}
+        {
+          // canStartGame &&
+          <div className="rounded-lg p-6 mb-6 text-center">
+            <p className="text-white text-lg mb-4">
+              Ready to start? You have {players.length} players waiting!
+            </p>
+            <button
+              onClick={handleStartGame}
+              className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg text-xl"
+            >
+              🎮 START GAME
+            </button>
           </div>
-          {status === "DEALER_TURN" && (
-            <p className="text-lg text-white">Value: {dealerValue}</p>
-          )}
-        </div>
+        }
+
+        {/* Dealer */}
+        {(status === "DEALING" ||
+          status === "PLAYING" ||
+          status === "DEALER_TURN" ||
+          status === "FINISHED") && (
+          <div className="bg-gray-800 rounded-lg p-6 mb-6">
+            <h2 className="text-xl font-bold text-white mb-4">
+              Dealer {status === "DEALER_TURN" && "🎲"}
+            </h2>
+            <div className="flex space-x-2 mb-4">
+              {dealerHand.map((card, i) => (
+                <Card
+                  key={i}
+                  card={card}
+                  hidden={
+                    status === "DEALING" || status === "PLAYING"
+                      ? i === 1
+                      : false
+                  }
+                />
+              ))}
+            </div>
+            {(status === "DEALER_TURN" || status === "FINISHED") && (
+              <p className="text-lg text-white">Value: {dealerValue}</p>
+            )}
+          </div>
+        )}
 
         {/* Mi mano */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-bold text-white mb-4">Your Hand</h2>
-          <div className="flex space-x-2 mb-4">
-            {myHand.map((card, i) => (
-              <Card key={i} card={card} />
-            ))}
+        {myHand.length > 0 && (
+          <div className="bg-gray-800 rounded-lg p-6 mb-6 border-2 border-green-500">
+            <h2 className="text-xl font-bold text-white mb-4">
+              Your Hand {isMyTurn && "⭐ YOUR TURN"}
+            </h2>
+            <div className="flex space-x-2 mb-4">
+              {myHand.map((card, i) => (
+                <Card key={i} card={card} />
+              ))}
+            </div>
+            <div className="flex justify-between items-center">
+              <p className="text-lg text-white">
+                Value: {myHand.reduce((sum, card) => sum + card.value, 0)}
+              </p>
+              {myBet > 0 && (
+                <p className="text-lg text-yellow-400">Bet: ${myBet}</p>
+              )}
+            </div>
           </div>
-          {myHand.length > 0 && (
-            <p className="text-lg text-white">
-              Value: {myHand.reduce((sum, card) => sum + card.value, 0)}
-            </p>
-          )}
-        </div>
+        )}
 
         {/* Controles */}
         {status === "BETTING" && <BettingControls />}
-        {status === "PLAYING" && isMyTurn && <GameControls />}
+        {
+          /* {status === "PLAYING" && isMyTurn &&  */
+          <GameControls />
+        }
 
         {/* Status */}
-        <div className="bg-gray-800 rounded-lg p-4 text-center">
-          <p className="text-white text-lg">
-            {status === "WAITING" && "Waiting for players..."}
-            {status === "BETTING" && "Place your bets!"}
-            {status === "DEALING" && "Dealing cards..."}
+        <div className="bg-gray-800 rounded-lg p-4 text-center mb-6">
+          <p className="text-white text-lg font-semibold">
+            {status === "WAITING" && "⏳ Waiting for players to join..."}
+            {status === "BETTING" && "💰 Place your bets!"}
+            {status === "DEALING" && "🎴 Dealing cards..."}
             {status === "PLAYING" &&
-              (isMyTurn ? "Your turn!" : "Waiting for others...")}
-            {status === "DEALER_TURN" && "Dealer playing..."}
-            {status === "FINISHED" && "Round finished!"}
+              (isMyTurn
+                ? "🎯 Your turn! Hit or Stand?"
+                : "⏳ Waiting for others...")}
+            {status === "DEALER_TURN" && "🎭 Dealer is playing..."}
+            {status === "FINISHED" &&
+              "🎉 Round finished! Next round starting soon..."}
           </p>
         </div>
 
         {/* Jugadores */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {players.map((player) => (
-            <div key={player.userId} className="bg-gray-800 rounded-lg p-4">
-              <p className="text-white font-semibold">{player.username}</p>
-              <p className="text-gray-400">Bet: ${player.bet}</p>
-              {player.isBlackjack && (
-                <span className="text-yellow-400">BLACKJACK!</span>
+            <div
+              key={player.userId}
+              className={`bg-gray-800 rounded-lg p-4 ${
+                player.userId === currentPlayerTurn
+                  ? "border-2 border-yellow-400"
+                  : ""
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-white font-semibold truncate">
+                  {player.username}
+                </p>
+                {player.userId === currentPlayerTurn && (
+                  <span className="text-yellow-400">⭐</span>
+                )}
+              </div>
+
+              {player.bet > 0 && (
+                <p className="text-gray-400 text-sm">Bet: ${player.bet}</p>
               )}
-              {player.isBusted && <span className="text-red-400">BUSTED</span>}
+
+              <p className="text-gray-400 text-sm">
+                Balance: ${player.balance}
+              </p>
+
+              {player.hand && player.hand.length > 0 && (
+                <div className="mt-2 flex space-x-1">
+                  {player.hand.slice(0, 3).map((card, i) => (
+                    <div
+                      key={i}
+                      className="w-8 h-12 bg-white rounded text-xs flex items-center justify-center"
+                    >
+                      {card.rank}
+                    </div>
+                  ))}
+                  {player.hand.length > 3 && (
+                    <div className="w-8 h-12 bg-gray-700 rounded text-xs flex items-center justify-center text-white">
+                      +{player.hand.length - 3}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-2">
+                {player.isBlackjack && (
+                  <span className="text-yellow-400 text-sm font-bold">
+                    ⚡ BLACKJACK!
+                  </span>
+                )}
+                {player.isBusted && (
+                  <span className="text-red-400 text-sm font-bold">
+                    💥 BUSTED
+                  </span>
+                )}
+                {player.isStanding &&
+                  !player.isBusted &&
+                  !player.isBlackjack && (
+                    <span className="text-blue-400 text-sm">✋ Standing</span>
+                  )}
+              </div>
             </div>
           ))}
         </div>

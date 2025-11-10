@@ -31,7 +31,7 @@ export async function createRoom(req, res) {
 
   const roomData = {
     ...value,
-    createdBy: req.user.id,
+    createdBy: req.user.email,
     status: "WAITING",
   };
 
@@ -94,6 +94,7 @@ export async function listRooms(req, res) {
       // Modo degradado: intentar obtener del Game Engine
       try {
         const response = await axios.get(`${GAME_ENGINE_URL}/internal/rooms`);
+
         return res.json({
           rooms: response.data || [],
           source: "game-engine",
