@@ -91,7 +91,34 @@ export function setupSocketHandlers(io, gameManager) {
         const { roomId, token } = data;
         const decoded = jwt.verify(token, JWT_SECRET);
 
-        logger.info(`User ${decoded.email} attempting to join room ${roomId}`);
+        logger.info(
+          `User ${decoded.email} (${decoded.id}) attempting to join room ${roomId}`
+        );
+
+        // Si el usuario ya está en una sala, sacarlo primero
+        const existingRoomId = socket.data.roomId;
+        if (existingRoomId && existingRoomId !== roomId) {
+          const existingGame = gameManager.getGame(existingRoomId);
+          if (existingGame) {
+            await existingGame.removePlayer(decoded.id, socket.id);
+            logger.info(
+              `User ${decoded.id} removed from previous room ${existingRoomId}`
+            );
+          }
+        }
+
+        // Si ya está en esta sala, solo confirmar
+        const game = gameManager.getGame(roomId);
+        if (game && game.players.has(decoded.id)) {
+          socket.data.roomId = roomId;
+          socket.emit("room-joined", {
+            roomId,
+            message: "Already in the game",
+            players: game.getPlayersInfo(),
+          });
+          logger.info(`User ${decoded.email} already in room ${roomId}`);
+          return;
+        }
 
         // CARGAR CONFIGURACIÓN DE LA SALA SI NO EXISTE
         if (!gameManager.roomConfigs.has(roomId)) {
@@ -101,6 +128,7 @@ export function setupSocketHandlers(io, gameManager) {
 
           if (!config) {
             socket.emit("error", { message: "Room not found or unavailable" });
+            logger.error(`Room ${roomId} config not found`);
             return;
           }
 
@@ -125,13 +153,16 @@ export function setupSocketHandlers(io, gameManager) {
           socket.emit("room-joined", {
             roomId,
             message: "Successfully joined the game",
+            players: game.getPlayersInfo(),
           });
-          logger.info(`✅ User ${username} joined room ${roomId}`);
+          logger.info(
+            `User ${decoded.email} successfully joined room ${roomId}`
+          );
         } else {
           socket.emit("error", {
-            message: "Failed to join room",
+            message: "Failed to join room (room full or other issue)",
           });
-          logger.warn(`❌ User ${username} failed to join room ${roomId}`);
+          logger.warn(`User ${decoded.email} failed to join room ${roomId}`);
         }
       } catch (error) {
         logger.error("Error joining room:", error);
@@ -306,7 +337,7 @@ export function setupSocketHandlers(io, gameManager) {
     /**
      * Desconexión
      */
-    socket.on("disconnect", async (reason) => {
+    socket.on("leave-room", async (reason) => {
       try {
         const { userId, username } = socket.data;
         logger.info(`Socket disconnected: ${username} (${reason})`);

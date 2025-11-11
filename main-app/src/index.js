@@ -58,18 +58,18 @@ async function bootstrap() {
   try {
     // Conectar a la base de datos
     await prisma.$connect();
-    logger.info("✅ Connected to PostgreSQL Main");
+    logger.info("Connected to PostgreSQL Main");
 
     // Configurar RabbitMQ
     await setupRabbitMQ();
-    logger.info("✅ Connected to RabbitMQ");
+    logger.info("Connected to RabbitMQ");
 
     // Iniciar servidor
     app.listen(PORT, () => {
-      logger.info(`🚀 Main App running on port ${PORT}`);
+      logger.info(`Main App running on port ${PORT}`);
     });
   } catch (error) {
-    logger.error("❌ Failed to start Main App:", error);
+    logger.error("Failed to start Main App:", error);
     process.exit(1);
   }
 }

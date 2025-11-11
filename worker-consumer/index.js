@@ -28,7 +28,7 @@ async function connectRabbitMQ() {
     // Configurar prefetch para procesar un mensaje a la vez
     await channel.prefetch(1);
 
-    logger.info("✅ Connected to RabbitMQ");
+    logger.info("Connected to RabbitMQ");
 
     // Configurar manejo de errores
     connection.on("error", (err) => {
@@ -63,7 +63,7 @@ async function startConsumers() {
   // Consumidor de eventos de juego
   await channel.consume(QUEUES.GAME_EVENTS, handleGameEvent, { noAck: false });
 
-  logger.info("✅ Consumers started");
+  logger.info("Consumers started");
 }
 
 /**
@@ -106,7 +106,7 @@ async function handlePendingWrite(msg) {
     if (success) {
       // Acknowledge: operación exitosa
       channel.ack(msg);
-      logger.info(`✅ Successfully processed: ${operation}`);
+      logger.info(`Successfully processed: ${operation}`);
     } else {
       // Reintento con backoff exponencial
       const maxAttempts = 5;
@@ -116,7 +116,7 @@ async function handlePendingWrite(msg) {
         const delay = Math.min(1000 * Math.pow(2, newAttempts), 30000);
 
         logger.warn(
-          `❌ Failed ${operation}, retrying in ${delay}ms (attempt ${newAttempts}/${maxAttempts})`
+          `Failed ${operation}, retrying in ${delay}ms (attempt ${newAttempts}/${maxAttempts})`
         );
 
         setTimeout(() => {
@@ -136,7 +136,7 @@ async function handlePendingWrite(msg) {
         }, delay);
       } else {
         // Máximos intentos alcanzados, mover a DLQ
-        logger.error(`❌ Max attempts reached for ${operation}, moving to DLQ`);
+        logger.error(`Max attempts reached for ${operation}, moving to DLQ`);
         channel.nack(msg, false, false);
       }
     }
@@ -333,14 +333,14 @@ async function bootstrap() {
   try {
     // Conectar a PostgreSQL
     await prisma.$connect();
-    logger.info("✅ Connected to PostgreSQL");
+    logger.info("Connected to PostgreSQL");
 
     // Conectar a RabbitMQ e iniciar consumidores
     await connectRabbitMQ();
 
-    logger.info("🚀 Worker Consumer started successfully");
+    logger.info("Worker Consumer started successfully");
   } catch (error) {
-    logger.error("❌ Failed to start Worker Consumer:", error);
+    logger.error("Failed to start Worker Consumer:", error);
     process.exit(1);
   }
 }

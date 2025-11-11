@@ -58,6 +58,20 @@ class SocketService {
     this.connectionPromise = null;
   }
 
+  async leaveRoom(): Promise<void> {
+    if (!this.socket?.connected) {
+      return;
+    }
+    if (this.roomId) {
+      this.socket.emit("leave-room", {
+        roomId: this.roomId,
+        username: useAuthStore.getState().user?.email,
+      });
+      this.roomId = null;
+      useGameStore.getState().setRoomId("");
+    }
+  }
+
   async joinRoom(roomId: string): Promise<void> {
     if (!this.socket?.connected) {
       toast.error("Not connected to game server");
@@ -68,19 +82,30 @@ class SocketService {
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error("Join room timeout"));
+        reject(new Error("Join room timeout after 10s"));
       }, 10000);
 
-      this.socket!.once("room-joined", () => {
+      const onRoomJoined = () => {
         clearTimeout(timeout);
+        this.socket!.off("error", onError);
         console.log("✅ Joined room:", roomId);
         resolve();
-      });
+      };
 
-      this.socket!.once("error", (data) => {
+      const onError = (data: any) => {
         clearTimeout(timeout);
-        reject(new Error(data.message));
-      });
+        this.socket!.off("room-joined", onRoomJoined);
+        // Si el error es "Already in the game", es ok, resolvemos
+        if (data.message && data.message.includes("Already")) {
+          console.log("⚠️ Already in game, proceeding...");
+          resolve();
+        } else {
+          reject(new Error(data.message || "Failed to join room"));
+        }
+      };
+
+      this.socket!.once("room-joined", onRoomJoined);
+      this.socket!.once("error", onError);
 
       this.socket!.emit("join-room", {
         roomId: this.roomId,
@@ -140,7 +165,6 @@ class SocketService {
 
     // Conexión exitosa
     this.socket.on("connect", () => {
-      console.log("🔌 Connected to game server");
       toast.success("Connected to game server");
     });
 

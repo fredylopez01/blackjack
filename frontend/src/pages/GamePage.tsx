@@ -46,15 +46,21 @@ export default function GamePage() {
       // 1. Cargar info de la sala
       const response = await roomsAPI.get(roomId!);
       setRoomInfo(response.room);
-      setIsCreator(response.room.createdBy === user?.id);
+      setIsCreator(response.room.createdBy === user?.email);
 
-      // 2. Unirse via WebSocket (esto ya se hace desde el lobby)
-      // Solo nos aseguramos de que el socket esté conectado
+      // 2. Asegurarse de que el socket esté conectado
       if (!socketService.isConnected()) {
-        await socketService.connect(useAuthStore.getState().token!);
+        const token = useAuthStore.getState().token;
+        if (token) {
+          await socketService.connect(token);
+        }
       }
 
-      await socketService.joinRoom(roomId!);
+      // 3. Unirse a la sala via socket (solo si no ya está unido)
+      const currentRoomId = socketService["roomId"];
+      if (currentRoomId !== roomId) {
+        await socketService.joinRoom(roomId!);
+      }
     } catch (error: any) {
       console.error("Error setting up room:", error);
       toast.error(error.message || "Failed to join room");
@@ -104,7 +110,7 @@ export default function GamePage() {
             </div>
             <button
               onClick={() => {
-                socketService.disconnect();
+                socketService.leaveRoom();
                 navigate("/lobby");
               }}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
@@ -118,8 +124,7 @@ export default function GamePage() {
       {/* Mesa de juego */}
       <div className="max-w-7xl mx-auto">
         {/* Start Game Button (solo para el creador cuando hay suficientes jugadores) */}
-        {
-          // canStartGame &&
+        {canStartGame && (
           <div className="rounded-lg p-6 mb-6 text-center">
             <p className="text-white text-lg mb-4">
               Ready to start? You have {players.length} players waiting!
@@ -131,7 +136,7 @@ export default function GamePage() {
               🎮 START GAME
             </button>
           </div>
-        }
+        )}
 
         {/* Dealer */}
         {(status === "DEALING" ||

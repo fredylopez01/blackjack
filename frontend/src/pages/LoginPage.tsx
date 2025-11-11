@@ -55,7 +55,6 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold text-white mb-2">♠️ ♥️ ♣️ ♦️</h1>
           <h2 className="text-3xl font-bold text-white">Blackjack</h2>
-          <p className="text-gray-300 mt-2">Distributed Multiplayer Game</p>
         </div>
 
         {/* Form */}

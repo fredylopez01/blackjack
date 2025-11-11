@@ -33,7 +33,6 @@ export default function LobbyPage() {
 
     // Conectar socket solo una vez (NO unirse a ninguna sala aún)
     if (token && !socketService.isConnected()) {
-      console.log("Connecting to game server...");
       socketService.connect(token).catch((error) => {
         console.error("Failed to connect socket:", error);
         toast.error("Failed to connect to game server");
@@ -61,14 +60,12 @@ export default function LobbyPage() {
 
     setConnecting(true);
     try {
-      // 1. Validar entrada via HTTP
-      await roomsAPI.join(roomId);
-
-      // 2. Navegar a la sala (el join via WebSocket se hace en GamePage)
+      // Navegar a la sala
+      // El socket join se hará en GamePage
       navigate(`/game/${roomId}`);
     } catch (error: any) {
-      console.error("Error joining room:", error);
-      toast.error(error.response?.data?.error || "Failed to join room");
+      console.error("Error navigating to room:", error);
+      toast.error("Failed to navigate to room");
     } finally {
       setConnecting(false);
     }
