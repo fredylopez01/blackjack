@@ -4,10 +4,10 @@ import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
 interface ResetPasswordProps {
-  setIsForgotPassword: () => void;
+  changeView: (view: string) => void;
 }
 
-export function ResetPassword({ setIsForgotPassword }: ResetPasswordProps) {
+export function ResetPassword({ changeView }: ResetPasswordProps) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -61,7 +61,7 @@ export function ResetPassword({ setIsForgotPassword }: ResetPasswordProps) {
       </form>
       <div className="mt-6 text-center">
         <button
-          onClick={setIsForgotPassword}
+          onClick={() => changeView("login")}
           className="text-sm text-green-400 hover:text-green-300"
         >
           Go Login
