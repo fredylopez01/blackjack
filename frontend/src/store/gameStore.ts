@@ -90,5 +90,7 @@ export const useGameStore = create<GameState>((set) => ({
       currentPlayerTurn: null,
       myHand: [],
       myBet: 0,
+      minBet: 10,
+      maxBet: 1000,
     }),
 }));

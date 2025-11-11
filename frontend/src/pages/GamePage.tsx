@@ -36,10 +36,20 @@ export default function GamePage() {
 
     setupRoom();
 
+    // Si volvemos al WAITING state, resetear bet e hand después de 2 segundos
+    if (status === "WAITING" && (myHand.length > 0 || myBet > 0)) {
+      const timer = setTimeout(() => {
+        useGameStore.getState().setMyHand([]);
+        useGameStore.getState().setMyBet(0);
+        useGameStore.getState().setDealerHand([], 0);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+
     return () => {
       // No desconectar aquí, solo limpiar
     };
-  }, [roomId]);
+  }, [roomId, status]);
 
   async function setupRoom() {
     try {
@@ -190,10 +200,7 @@ export default function GamePage() {
 
         {/* Controles */}
         {status === "BETTING" && <BettingControls />}
-        {
-          /* {status === "PLAYING" && isMyTurn &&  */
-          <GameControls />
-        }
+        <GameControls />
 
         {/* Status */}
         <div className="bg-gray-800 rounded-lg p-4 text-center mb-6">

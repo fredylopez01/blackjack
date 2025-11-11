@@ -6,9 +6,14 @@ import toast from "react-hot-toast";
 import { useState } from "react";
 
 export default function BettingControls() {
-  const { minBet, maxBet, myBet } = useGameStore();
+  const { minBet, maxBet, myBet, status } = useGameStore();
   const { user } = useAuthStore();
   const [betAmount, setBetAmount] = useState(minBet);
+
+  // Solo mostrar si el estado es BETTING
+  if (status !== "BETTING") {
+    return null;
+  }
 
   const handlePlaceBet = () => {
     if (myBet > 0) {

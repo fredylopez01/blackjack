@@ -101,9 +101,37 @@ export class BlackjackGame {
     logger.info(`Player ${player.username} removed from game ${this.roomId}`);
 
     if (this.players.size === 0) {
+      // Mark session completed and clear session id so next join creates a new GameSession
       this.status = "WAITING";
       this.roundNumber = 0;
       logger.info(`Room ${this.roomId} returned to WAITING (no players)`);
+
+      try {
+        if (this.gameSessionId) {
+          await this.endGame();
+          // clear session id so next game creates a new GameSession
+          this.gameSessionId = null;
+          logger.info(`Game session for room ${this.roomId} ended and cleared`);
+        }
+      } catch (err) {
+        logger.error("Error finalizing game session on empty room:", err);
+      }
+    }
+
+    // Si menos de 2 jugadores en cualquier estado activo, volver a WAITING
+    if (
+      this.players.size < 2 &&
+      this.status !== "WAITING" &&
+      this.status !== "FINISHED"
+    ) {
+      logger.info(
+        `Only ${this.players.size} player(s) left, returning to WAITING`
+      );
+      this.status = "WAITING";
+      if (this.roundTimeout) {
+        clearTimeout(this.roundTimeout);
+      }
+      this.broadcastGameState();
     }
 
     if (this.players.size === 1 && this.status === "PLAYING") {
@@ -143,6 +171,9 @@ export class BlackjackGame {
 
     this.dealerHand = [];
     this.currentPlayerIndex = 0;
+
+    // Broadcast state update para limpiar tablero en frontend
+    this.broadcastGameState();
 
     this.io.to(this.roomId).emit("betting-phase", {
       roundNumber: this.roundNumber,
@@ -483,12 +514,27 @@ export class BlackjackGame {
     });
 
     // Iniciar nueva ronda solo si hay 2+ jugadores
-    setTimeout(() => {
+    setTimeout(async () => {
       if (this.players.size >= 2) {
         this.startBettingPhase();
       } else {
         logger.info(`Not enough players, returning to WAITING`);
         this.status = "WAITING";
+
+        // If no players left, finalize the game session so the room can be reused
+        if (this.players.size === 0) {
+          try {
+            if (this.gameSessionId) {
+              await this.endGame();
+              this.gameSessionId = null;
+              logger.info(
+                `Game session for room ${this.roomId} ended and cleared (post-round)`
+              );
+            }
+          } catch (err) {
+            logger.error("Error ending game session after round:", err);
+          }
+        }
       }
     }, 10000);
   }

@@ -337,16 +337,34 @@ export function setupSocketHandlers(io, gameManager) {
     /**
      * Desconexión
      */
+    socket.on("disconnect", async (reason) => {
+      try {
+        const { userId, username, roomId } = socket.data;
+        logger.info(
+          `Socket disconnected: ${username} (${userId}) - Reason: ${reason}`
+        );
+
+        if (userId && roomId) {
+          await gameManager.removePlayer(userId, socket.id);
+          logger.info(
+            `Player ${username} removed from room ${roomId} due to disconnect`
+          );
+        }
+      } catch (error) {
+        logger.error("Error handling disconnect:", error);
+      }
+    });
+
     socket.on("leave-room", async (reason) => {
       try {
         const { userId, username } = socket.data;
-        logger.info(`Socket disconnected: ${username} (${reason})`);
+        logger.info(`Player ${username} left room manually`);
 
         if (userId) {
           await gameManager.removePlayer(userId, socket.id);
         }
       } catch (error) {
-        logger.error("Error handling disconnect:", error);
+        logger.error("Error handling leave-room:", error);
       }
     });
 
