@@ -51,6 +51,13 @@ export const authAPI = {
     const response = await authApi.get("/api/users/profile");
     return response.data;
   },
+
+  forgotPassword: async (email: string) => {
+    const response = await authApi.post("/api/password/forgot-password", {
+      email,
+    });
+    return response.data;
+  },
 };
 
 // Rooms endpoints

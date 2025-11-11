@@ -184,7 +184,6 @@ class SocketService {
 
     // Estado del juego
     this.socket.on("game-state", (data) => {
-      console.log("Game state:", data);
       useGameStore.getState().setGameStatus(data.status);
       // Si el estado cambió a WAITING, limpiar tablero
       if (data.status === "WAITING") {
@@ -198,7 +197,6 @@ class SocketService {
 
     // Fase de apuestas
     this.socket.on("betting-phase", (data) => {
-      console.log("Betting phase:", data);
       useGameStore.getState().setGameStatus("BETTING");
       useGameStore.getState().setRoundNumber(data.roundNumber);
       useGameStore.getState().setBetLimits(data.minBet, data.maxBet);
@@ -210,7 +208,6 @@ class SocketService {
 
     // Apuesta realizada por otro jugador
     this.socket.on("bet-placed", (data) => {
-      console.log("Bet placed:", data);
       toast(`${data.username} bet $${data.amount}`, { icon: "💵" });
     });
 
@@ -222,7 +219,6 @@ class SocketService {
 
     // Cartas repartidas
     this.socket.on("cards-dealt", (data) => {
-      console.log("Cards dealt:", data);
       useGameStore.getState().setGameStatus("DEALING");
       useGameStore.getState().setPlayers(data.players);
       useGameStore
@@ -243,7 +239,6 @@ class SocketService {
 
     // Turno de jugador
     this.socket.on("player-turn", (data) => {
-      console.log("Player turn:", data);
       useGameStore.getState().setGameStatus("PLAYING");
       useGameStore.getState().setCurrentPlayerTurn(data.userId);
 
@@ -257,7 +252,6 @@ class SocketService {
 
     // Carta repartida
     this.socket.on("card-dealt", (data) => {
-      console.log("Card dealt:", data);
       const userId = useAuthStore.getState().user?.id;
       if (data.userId === userId) {
         useGameStore.getState().setMyHand(data.hand);
@@ -267,7 +261,6 @@ class SocketService {
 
     // Jugador se pasó
     this.socket.on("player-busted", (data) => {
-      console.log("Player busted:", data);
       const userId = useAuthStore.getState().user?.id;
       if (data.userId === userId) {
         toast.error("Busted! 💥", { duration: 5000 });
@@ -278,7 +271,6 @@ class SocketService {
 
     // Jugador se plantó
     this.socket.on("player-stood", (data) => {
-      console.log("Player stood:", data);
       const userId = useAuthStore.getState().user?.id;
       if (data.userId === userId) {
         toast.success("Standing ✋");
@@ -289,7 +281,6 @@ class SocketService {
 
     // Revelar carta del dealer
     this.socket.on("dealer-reveal", (data) => {
-      console.log("Dealer reveal:", data);
       useGameStore.getState().setGameStatus("DEALER_TURN");
       useGameStore.getState().setDealerHand(data.hand, data.value);
       toast("Dealer reveals... 🎭", { duration: 3000 });
@@ -297,13 +288,11 @@ class SocketService {
 
     // Dealer pide carta
     this.socket.on("dealer-hit", (data) => {
-      console.log("Dealer hit:", data);
       useGameStore.getState().setDealerHand(data.hand, data.value);
     });
 
     // Ronda terminada
     this.socket.on("round-finished", (data) => {
-      console.log("Round finished:", data);
       useGameStore.getState().setGameStatus("FINISHED");
 
       const userId = useAuthStore.getState().user?.id;

@@ -65,10 +65,10 @@
     "password": "$2b$10$rkj5qusuHhvdIwWDk9uSN.53lwt9LWFochp/7Od0v4n/VUrvCWdR2",
     "role": "admin",
     "isActive": true,
-    "loginAttempts": 0,
+    "loginAttempts": 1,
     "lastLogin": null,
     "createdAt": "2025-09-08T20:47:40.953Z",
-    "updatedAt": "2025-09-08T20:47:40.953Z",
+    "updatedAt": "2025-11-11T03:01:45.873Z",
     "lockUntil": null
   },
   {
@@ -102,9 +102,9 @@
     "role": "user",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-10T21:59:04.934Z",
+    "lastLogin": "2025-11-11T03:02:02.512Z",
     "createdAt": "2025-11-10T21:59:00.628Z",
-    "updatedAt": "2025-11-10T21:59:04.934Z",
+    "updatedAt": "2025-11-11T03:02:02.512Z",
     "lockUntil": null
   }
 ]
