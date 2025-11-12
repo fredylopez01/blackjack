@@ -9,6 +9,16 @@ import Card from "../components/Card";
 import BettingControls from "../components/BettingControls";
 import toast from "react-hot-toast";
 import GameControls from "../components/GameControls";
+import {
+  Bomb,
+  Dices,
+  Hand,
+  Hourglass,
+  Joystick,
+  Star,
+  UserStar,
+  Zap,
+} from "lucide-react";
 
 export default function GamePage() {
   const { roomId } = useParams();
@@ -96,7 +106,7 @@ export default function GamePage() {
   const canStartGame = isCreator && status === "WAITING" && players.length >= 2;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-green-900 to-gray-900 p-6">
+    <div className="min-h-dvh bg-gradient-to-br from-gray-900 via-green-900 to-gray-900 p-6">
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-6">
         <div className="flex justify-between items-center">
@@ -135,15 +145,15 @@ export default function GamePage() {
       <div className="max-w-7xl mx-auto">
         {/* Start Game Button (solo para el creador cuando hay suficientes jugadores) */}
         {canStartGame && (
-          <div className="rounded-lg p-6 mb-6 text-center">
+          <div className="flex flex-col rounded-lg p-6 mb-6 text-center">
             <p className="text-white text-lg mb-4">
               Ready to start? You have {players.length} players waiting!
             </p>
             <button
               onClick={handleStartGame}
-              className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg text-xl"
+              className="flex items-center gap-3 self-center px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg text-xl"
             >
-              🎮 START GAME
+              <Joystick /> START GAME
             </button>
           </div>
         )}
@@ -154,8 +164,8 @@ export default function GamePage() {
           status === "DEALER_TURN" ||
           status === "FINISHED") && (
           <div className="bg-gray-800 rounded-lg p-6 mb-6">
-            <h2 className="text-xl font-bold text-white mb-4">
-              Dealer {status === "DEALER_TURN" && "🎲"}
+            <h2 className="flex items-center gap-3 text-xl font-bold text-white mb-4">
+              Dealer {status === "DEALER_TURN" && <Dices />}
             </h2>
             <div className="flex space-x-2 mb-4">
               {dealerHand.map((card, i) => (
@@ -179,8 +189,13 @@ export default function GamePage() {
         {/* Mi mano */}
         {myHand.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6 mb-6 border-2 border-green-500">
-            <h2 className="text-xl font-bold text-white mb-4">
-              Your Hand {isMyTurn && "⭐ YOUR TURN"}
+            <h2 className="flex items-center gap-3 text-xl font-bold text-white mb-4">
+              Your Hand{" "}
+              {isMyTurn && (
+                <>
+                  <UserStar /> YOUR TURN
+                </>
+              )}
             </h2>
             <div className="flex space-x-2 mb-4">
               {myHand.map((card, i) => (
@@ -204,17 +219,19 @@ export default function GamePage() {
 
         {/* Status */}
         <div className="bg-gray-800 rounded-lg p-4 text-center mb-6">
-          <p className="text-white text-lg font-semibold">
-            {status === "WAITING" && "⏳ Waiting for players to join..."}
-            {status === "BETTING" && "💰 Place your bets!"}
-            {status === "DEALING" && "🎴 Dealing cards..."}
+          <p className="flex items-center justify-center gap-3 text-white text-lg font-semibold">
+            {status === "WAITING" && (
+              <>
+                <Hourglass /> Waiting for players to join...
+              </>
+            )}
+            {status === "BETTING" && "Place your bets!"}
+            {status === "DEALING" && "Dealing cards..."}
             {status === "PLAYING" &&
-              (isMyTurn
-                ? "🎯 Your turn! Hit or Stand?"
-                : "⏳ Waiting for others...")}
-            {status === "DEALER_TURN" && "🎭 Dealer is playing..."}
+              (isMyTurn ? "Your turn! Hit or Stand?" : "Waiting for others...")}
+            {status === "DEALER_TURN" && "Dealer is playing..."}
             {status === "FINISHED" &&
-              "🎉 Round finished! Next round starting soon..."}
+              "Round finished! Next round starting soon..."}
           </p>
         </div>
 
@@ -234,7 +251,9 @@ export default function GamePage() {
                   {player.username}
                 </p>
                 {player.userId === currentPlayerTurn && (
-                  <span className="text-yellow-400">⭐</span>
+                  <span className="text-yellow-400">
+                    <Star />
+                  </span>
                 )}
               </div>
 
@@ -266,19 +285,21 @@ export default function GamePage() {
 
               <div className="mt-2">
                 {player.isBlackjack && (
-                  <span className="text-yellow-400 text-sm font-bold">
-                    ⚡ BLACKJACK!
+                  <span className="flex items-center gap-3 text-yellow-400 text-sm font-bold">
+                    <Zap /> BLACKJACK!
                   </span>
                 )}
                 {player.isBusted && (
                   <span className="text-red-400 text-sm font-bold">
-                    💥 BUSTED
+                    <Bomb /> BUSTED
                   </span>
                 )}
                 {player.isStanding &&
                   !player.isBusted &&
                   !player.isBlackjack && (
-                    <span className="text-blue-400 text-sm">✋ Standing</span>
+                    <span className="text-blue-400 text-sm">
+                      <Hand /> Standing
+                    </span>
                   )}
               </div>
             </div>

@@ -51,7 +51,7 @@ export async function setupRabbitMQ() {
       "game.*"
     );
 
-    logger.info("✅ RabbitMQ queues and exchanges configured");
+    logger.info("RabbitMQ queues and exchanges configured");
 
     // Manejo de errores de conexión
     connection.on("error", (err) => {

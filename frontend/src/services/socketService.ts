@@ -3,6 +3,7 @@ import { io, Socket } from "socket.io-client";
 import { useGameStore } from "../store/gameStore";
 import { useAuthStore } from "../store/authStore";
 import toast from "react-hot-toast";
+import { DollarSign } from "lucide-react";
 
 const WS_URL = "http://localhost:3002";
 
@@ -165,7 +166,7 @@ class SocketService {
 
     // Error de conexión
     this.socket.on("connect_error", (error) => {
-      console.error("❌ Connection error:", error);
+      console.error("Connection error:", error);
       toast.error("Failed to connect to game server");
     });
 
@@ -203,12 +204,12 @@ class SocketService {
       useGameStore.getState().setMyBet(0); // Limpiar apuesta anterior
       useGameStore.getState().setMyHand([]); // Limpiar cartas anteriores
       useGameStore.getState().setCurrentPlayerTurn(null); // Limpiar turno
-      toast("Place your bets! 🎰", { duration: 5000, icon: "💰" });
+      toast("Place your bets!", { duration: 5000 });
     });
 
     // Apuesta realizada por otro jugador
     this.socket.on("bet-placed", (data) => {
-      toast(`${data.username} bet $${data.amount}`, { icon: "💵" });
+      toast(`${data.username} bet $${data.amount}`);
     });
 
     // Mi apuesta fue aceptada
@@ -232,7 +233,7 @@ class SocketService {
         useGameStore.getState().setMyHand(myPlayer.hand);
 
         if (myPlayer.isBlackjack) {
-          toast.success("BLACKJACK! 🎉", { duration: 5000 });
+          toast.success("BLACKJACK!", { duration: 5000 });
         }
       }
     });
@@ -265,7 +266,7 @@ class SocketService {
       if (data.userId === userId) {
         toast.error("Busted! 💥", { duration: 5000 });
       } else {
-        toast(`${data.username} busted!`, { icon: "💥" });
+        toast(`${data.username} busted!`);
       }
     });
 
@@ -273,9 +274,9 @@ class SocketService {
     this.socket.on("player-stood", (data) => {
       const userId = useAuthStore.getState().user?.id;
       if (data.userId === userId) {
-        toast.success("Standing ✋");
+        toast.success("Standing");
       } else {
-        toast(`${data.username} stands`, { icon: "✋" });
+        toast(`${data.username} stands`);
       }
     });
 
@@ -283,7 +284,7 @@ class SocketService {
     this.socket.on("dealer-reveal", (data) => {
       useGameStore.getState().setGameStatus("DEALER_TURN");
       useGameStore.getState().setDealerHand(data.hand, data.value);
-      toast("Dealer reveals... 🎭", { duration: 3000 });
+      toast("Dealer reveals...", { duration: 3000 });
     });
 
     // Dealer pide carta
@@ -302,11 +303,11 @@ class SocketService {
         useAuthStore.getState().updateBalance(myResult.balance);
 
         if (myResult.result === "win") {
-          toast.success(`You won $${myResult.payout}! 🎉`, { duration: 8000 });
+          toast.success(`You won $${myResult.payout}!`, { duration: 8000 });
         } else if (myResult.result === "lose") {
-          toast.error(`You lost $${myResult.bet} 😢`, { duration: 5000 });
+          toast.error(`You lost $${myResult.bet}`, { duration: 5000 });
         } else {
-          toast("Push! Bet returned 🤝", { icon: "🤝", duration: 5000 });
+          toast("Push! Bet returned", { duration: 5000 });
         }
       }
 
@@ -315,14 +316,14 @@ class SocketService {
         const winners = data.results.filter((r: any) => r.result === "win");
         if (winners.length > 0) {
           const winnerNames = winners.map((w: any) => w.username).join(", ");
-          toast(`Winners: ${winnerNames} 🏆`, { duration: 5000 });
+          toast(`Winners: ${winnerNames}`, { duration: 5000 });
         }
       }, 2000);
     });
 
     // Errores
     this.socket.on("error", (data) => {
-      console.error("❌ Socket error:", data);
+      console.error("Socket error:", data);
       toast.error(data.message || "An error occurred");
     });
   }

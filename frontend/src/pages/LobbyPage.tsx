@@ -6,6 +6,7 @@ import { roomsAPI } from "../services/api";
 import { socketService } from "../services/socketService";
 import toast from "react-hot-toast";
 import { CreateRoomModal } from "./CreateRoomModal";
+import { LogOut, Plus, RefreshCcw } from "lucide-react";
 
 interface Room {
   id: string;
@@ -83,9 +84,11 @@ export default function LobbyPage() {
         <div className="flex flex-wrap justify-between items-center">
           <div>
             <h1 className="text-4xl font-semibold text-white mb-2">
-              ♠️ ♥️ ♣️ ♦️ Blackjack Lobby
+              Blackjack Lobby
             </h1>
-            <p className="text-gray-300">Choose a table and start playing</p>
+            <p className="text-gray-300 text-xs">
+              Choose a table and start playing
+            </p>
           </div>
 
           <div className="flex items-center space-x-4">
@@ -96,16 +99,16 @@ export default function LobbyPage() {
               </p>
             </div>
 
-            <div className="bg-gray-800 px-6 py-3 rounded-lg">
-              <p className="text-sm text-gray-400">Player</p>
+            <div className="bg-gray-800 px-4 py-2 rounded-lg">
+              <p className="text-xs text-gray-400">Player</p>
               <p className="text-sm font-semibold text-white">{user?.email}</p>
             </div>
 
             <button
               onClick={handleLogout}
-              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition"
+              className="flex items-center gap-3 px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition"
             >
-              Logout
+              Logout <LogOut size={18} />
             </button>
           </div>
         </div>
@@ -114,16 +117,16 @@ export default function LobbyPage() {
       <div className="max-w-7xl mx-auto mb-6 flex justify-between items-center">
         <button
           onClick={() => loadRooms()}
-          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition"
+          className="flex items-center gap-3 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition"
         >
-          🔄 Refresh
+          <RefreshCcw size={18} /> Refresh
         </button>
 
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-lg transition"
+          className="flex items-center gap-3 px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-lg transition"
         >
-          + Create Room
+          <Plus size={18} /> Create Room
         </button>
       </div>
 

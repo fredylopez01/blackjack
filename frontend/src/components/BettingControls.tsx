@@ -4,6 +4,7 @@ import { socketService } from "../services/socketService";
 import { useAuthStore } from "../store/authStore";
 import toast from "react-hot-toast";
 import { useState } from "react";
+import { TicketCheck } from "lucide-react";
 
 export default function BettingControls() {
   const { minBet, maxBet, myBet, status } = useGameStore();
@@ -40,7 +41,9 @@ export default function BettingControls() {
 
   return (
     <div className="bg-gray-800 rounded-lg p-6 mb-6 border-2 border-yellow-500">
-      <h3 className="text-xl font-bold text-white mb-4">💰 Place Your Bet</h3>
+      <h3 className="flex items-center gap-3 text-xl font-bold text-white mb-4">
+        <TicketCheck /> Place Your Bet
+      </h3>
 
       {myBet > 0 ? (
         <div className="text-center">

@@ -34,16 +34,3 @@ export const logger = winston.createLogger({
     }),
   ],
 });
-
-// En desarrollo, loggear también a la consola con más detalle
-if (process.env.NODE_ENV !== "production") {
-  logger.add(
-    new winston.transports.Console({
-      format: combine(
-        colorize(),
-        timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-        winston.format.simple()
-      ),
-    })
-  );
-}

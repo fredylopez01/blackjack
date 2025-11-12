@@ -57,21 +57,19 @@ async function bootstrap() {
   try {
     // Conectar a la base de datos
     await prisma.$connect();
-    logger.info("✅ Connected to PostgreSQL Game DB");
+    logger.info("Connected to PostgreSQL Game DB");
 
     // Configurar RabbitMQ
     await setupRabbitMQ();
-    logger.info("✅ Connected to RabbitMQ");
+    logger.info("Connected to RabbitMQ");
 
     // Iniciar servidor
     httpServer.listen(PORT, () => {
-      logger.info(`🚀 Game Engine running on port ${PORT}`);
-      logger.info(
-        `🎮 WebSocket endpoint: ws://localhost:${PORT}/game/socket.io`
-      );
+      logger.info(`Game Engine running on port ${PORT}`);
+      logger.info(`WebSocket endpoint: ws://localhost:${PORT}/game/socket.io`);
     });
   } catch (error) {
-    logger.error("❌ Failed to start Game Engine:", error);
+    logger.error("Failed to start Game Engine:", error);
     process.exit(1);
   }
 }

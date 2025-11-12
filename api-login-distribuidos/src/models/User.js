@@ -23,6 +23,7 @@ class User {
     this.createdAt = userData.createdAt || new Date().toISOString();
     this.updatedAt = new Date().toISOString();
     this.lockUntil = null;
+    this.balance = userData.balance || 1000;
   }
 
   // Crear nuevo usuario
