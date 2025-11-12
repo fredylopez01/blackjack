@@ -64,7 +64,7 @@ export const authAPI = {
     newPassword: string;
     token: string;
   }) => {
-    const response = await authApi.post("/reset-password", data);
+    const response = await authApi.post("/api/password/reset-password", data);
     return response.data;
   },
 };
