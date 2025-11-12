@@ -86,7 +86,7 @@ export function Login({ changeView }: LoginProps) {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-2xl p-8 mb-24">
+    <div className="bg-gray-800 rounded-lg shadow-2xl p-8 mb-2">
       <div className="flex mb-6">
         <button
           onClick={() => setIsLogin(true)}
@@ -172,13 +172,14 @@ export function Login({ changeView }: LoginProps) {
         </button>
       </form>
 
-      <div className="flex gap-4 mt-6 text-center">
+      <div className="flex items-center justify-center gap-4 mt-6 text-center">
         <button
           onClick={() => changeView("reset-password")}
           className="text-sm text-green-400 hover:text-green-300"
         >
           Reset password
         </button>
+        <span className="text-sm text-green-400 hover:text-green-300">|</span>
         <button
           onClick={() => changeView("forgot-password")}
           className="text-sm text-green-400 hover:text-green-300"

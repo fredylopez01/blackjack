@@ -38,11 +38,11 @@ export function ResetPassword({ changeView }: ResetPasswordProps) {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-2xl p-8 mb-24">
-      <h1 className="text-center py-2 px-4 rounded-l-lg font-semibold text-gray-300 text-2xl mb-8">
+    <div className="bg-gray-800 rounded-lg shadow-2xl p-8 mb-2">
+      <h1 className="text-center py-1 px-4 rounded-l-lg font-semibold text-gray-300 text-2xl mb-4">
         Reset Password
       </h1>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Email
