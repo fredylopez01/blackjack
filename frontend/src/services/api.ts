@@ -58,6 +58,15 @@ export const authAPI = {
     });
     return response.data;
   },
+
+  resetPassword: async (data: {
+    email: string;
+    newPassword: string;
+    token: string;
+  }) => {
+    const response = await authApi.post("/reset-password", data);
+    return response.data;
+  },
 };
 
 // Rooms endpoints
