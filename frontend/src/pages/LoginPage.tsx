@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Club, Diamond, Heart, Spade } from "lucide-react";
+import { ForgotPassword } from "../components/ForgotPassword";
 import { ResetPassword } from "../components/ResetPassword";
 import { Login } from "../components/Login";
 
@@ -16,6 +17,9 @@ export default function LoginPage() {
         return <Login changeView={changeView} />;
         break;
       case "forgot-password":
+        return <ForgotPassword changeView={changeView} />;
+        break;
+      case "reset-password":
         return <ResetPassword changeView={changeView} />;
         break;
       default:
