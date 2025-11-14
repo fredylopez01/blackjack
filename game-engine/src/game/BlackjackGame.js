@@ -4,6 +4,7 @@ import axios from "axios";
 import { Deck, calculateHandValue, isBlackjack, isBusted } from "./Deck.js";
 import { prisma } from "../index.js";
 import { publishEvent } from "../services/rabbitmq.service.js";
+import { MainAppSyncService } from "../services/mainAppSyncService.js";
 import { serviceTokenManager } from "../services/serviceTokenManager.js";
 import { logger } from "../utils/logger.js";
 
@@ -515,6 +516,9 @@ export class BlackjackGame {
     // Sincronizar balances con la API después de guardar la ronda
     await this.syncBalancesToAPI(results);
 
+    // Sincronizar datos del juego y rankings a main-app
+    await this.syncToMainApp(results);
+
     await publishEvent("game.round.completed", {
       roomId: this.roomId,
       roundNumber: this.roundNumber,
@@ -799,6 +803,93 @@ export class BlackjackGame {
           }
         }
       }
+    }
+  }
+
+  /**
+   * Sincroniza datos de la partida completada a main-app
+   * Guarda el historial y actualiza rankings
+   */
+  async syncToMainApp(results) {
+    try {
+      // Obtener datos de la sesión y sesiones de jugadores
+      const session = await prisma.gameSession.findUnique({
+        where: { id: this.gameSessionId },
+        include: { players: true },
+      });
+
+      if (!session) {
+        logger.error("Game session not found for sync");
+        return false;
+      }
+
+      // Mapear datos de jugadores desde players
+      const playerData = {};
+      for (const playerSession of session.players) {
+        playerData[playerSession.userId] = {
+          initialBalance: playerSession.initialBalance,
+          currentBalance: playerSession.currentBalance,
+          roundsWon: playerSession.roundsWon || 0,
+          roundsLost: playerSession.roundsLost || 0,
+          roundsPush: playerSession.roundsPush || 0,
+        };
+      }
+
+      // Preparar datos del historial
+      const gameData = {
+        roomId: this.roomId,
+        gameEngineId: this.gameSessionId,
+        startedAt: session.startedAt,
+        finishedAt: session.finishedAt,
+        totalRounds: this.roundNumber,
+        results: results.map((r) => {
+          const pData = playerData[r.userId] || {};
+          return {
+            userId: r.userId,
+            username: r.username,
+            initialBalance: pData.initialBalance || 0,
+            balance: r.balance,
+            roundsWon: pData.roundsWon,
+            roundsLost: pData.roundsLost,
+            roundsPush: pData.roundsPush,
+          };
+        }),
+      };
+
+      // Preparar datos de rankings
+      const rankingData = {
+        results: results.map((r) => {
+          const pData = playerData[r.userId] || {};
+          return {
+            userId: r.userId,
+            username: r.username,
+            profit: r.balance - (pData.initialBalance || 0),
+            roundsWon: pData.roundsWon,
+            roundsLost: pData.roundsLost,
+          };
+        }),
+      };
+
+      // Enviar ambos a main-app
+      const syncResult = await MainAppSyncService.syncGameCompletion(
+        gameData,
+        rankingData
+      );
+
+      if (syncResult.allSuccess) {
+        logger.info(
+          `Game completion synced to main-app: ${this.gameSessionId}`
+        );
+        return true;
+      } else {
+        logger.warn(
+          `Partial sync to main-app: history=${syncResult.historySuccess}, rankings=${syncResult.rankingSuccess}`
+        );
+        return syncResult.historySuccess; // Al menos el historial es crítico
+      }
+    } catch (error) {
+      logger.error("Error syncing to main-app:", error);
+      return false;
     }
   }
 }

@@ -47,30 +47,30 @@ export function CreateRoomModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validatePassword(password)) {
-      setLoading(true);
+    setLoading(true);
 
-      try {
-        let body: Room = {
-          name,
-          isPublic,
-          minBet,
-          maxBet,
-          maxPlayers,
-        };
-        if (!isPublic) {
+    try {
+      let body: Room = {
+        name,
+        isPublic,
+        minBet,
+        maxBet,
+        maxPlayers,
+      };
+      if (!isPublic) {
+        if (validatePassword(password)) {
           body = { ...body, password };
         }
-        await roomsAPI.create(body);
-
-        toast.success("Room created!");
-        onSuccess();
-      } catch (error: any) {
-        console.error("Error creating room:", error);
-        toast.error(error.response?.data?.error || "Failed to create room");
-      } finally {
-        setLoading(false);
       }
+      await roomsAPI.create(body);
+
+      toast.success("Room created!");
+      onSuccess();
+    } catch (error: any) {
+      console.error("Error creating room:", error);
+      toast.error(error.response?.data?.error || "Failed to create room");
+    } finally {
+      setLoading(false);
     }
   };
 

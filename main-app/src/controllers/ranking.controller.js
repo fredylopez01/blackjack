@@ -4,7 +4,7 @@ import { isDatabaseHealthy } from "../middleware/healthCheck.middleware.js";
 
 export async function getGlobalRanking(req, res) {
   try {
-    const limit = parseInt(req.query.limit) || 100;
+    const limit = parseInt(req.query.limit) || 50;
 
     if (!isDatabaseHealthy()) {
       return res.status(503).json({
