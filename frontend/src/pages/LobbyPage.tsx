@@ -6,7 +6,8 @@ import { roomsAPI } from "../services/api";
 import { socketService } from "../services/socketService";
 import toast from "react-hot-toast";
 import { CreateRoomModal } from "./CreateRoomModal";
-import { LogOut, Plus, RefreshCcw } from "lucide-react";
+import { Globe, GlobeLock, LogOut, Plus, RefreshCcw } from "lucide-react";
+import { EnterPasswordModal } from "./EnterPassword";
 
 interface Room {
   id: string;
@@ -24,6 +25,8 @@ export default function LobbyPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAddPassword, setShowAddPassword] = useState(false);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
 
   const navigate = useNavigate();
@@ -56,14 +59,31 @@ export default function LobbyPage() {
     }
   };
 
-  const handleJoinRoom = async (roomId: string) => {
-    if (connecting) return;
+  const handleJoinRoom = async (
+    roomId: string,
+    isPublic: boolean,
+    owner: string
+  ) => {
+    if (!isPublic) {
+      if (owner === user?.email) {
+        // El creador de la sala no necesita contraseña
+        joinRoom(roomId);
+      } else {
+        setSelectedRoomId(roomId);
+        setShowAddPassword(true);
+      }
+    } else {
+      if (connecting) return;
+      joinRoom(roomId);
+    }
+  };
 
+  const joinRoom = async (roomId: string, password?: string) => {
     setConnecting(true);
     try {
       // Navegar a la sala
       // El socket join se hará en GamePage
-      navigate(`/game/${roomId}`);
+      navigate(`/game/${roomId}`, { state: { password } });
     } catch (error: any) {
       console.error("Error navigating to room:", error);
       toast.error("Failed to navigate to room");
@@ -162,8 +182,16 @@ export default function LobbyPage() {
                 <div className="space-y-2 text-gray-300">
                   <div className="flex justify-between">
                     <span>Type:</span>
-                    <span className="font-semibold">
-                      {room.isPublic ? "🌐 Public" : "🔒 Private"}
+                    <span className="font-semibold flex items-center gap-1">
+                      {room.isPublic ? (
+                        <>
+                          <Globe size={20} /> Public
+                        </>
+                      ) : (
+                        <>
+                          <GlobeLock size={20} /> Private
+                        </>
+                      )}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -198,7 +226,9 @@ export default function LobbyPage() {
 
                 <button
                   className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => handleJoinRoom(room.id)}
+                  onClick={() =>
+                    handleJoinRoom(room.id, room.isPublic, room.createdBy)
+                  }
                   disabled={connecting}
                 >
                   {connecting ? "Joining..." : "Join Table"}
@@ -215,6 +245,16 @@ export default function LobbyPage() {
           onSuccess={() => {
             setShowCreateModal(false);
             loadRooms();
+          }}
+        />
+      )}
+
+      {showAddPassword && (
+        <EnterPasswordModal
+          onClose={() => setShowAddPassword(false)}
+          onSuccess={(password: string) => {
+            setShowCreateModal(false);
+            joinRoom(selectedRoomId!, password);
           }}
         />
       )}

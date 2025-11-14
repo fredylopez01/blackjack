@@ -1,3 +1,4 @@
+import { Room } from "../interfaces/Room";
 import axios from "axios";
 
 const API_URL = "http://localhost:3001";
@@ -76,14 +77,7 @@ export const roomsAPI = {
     return response.data;
   },
 
-  create: async (data: {
-    name: string;
-    isPublic: boolean;
-    password?: string;
-    maxPlayers?: number;
-    minBet?: number;
-    maxBet?: number;
-  }) => {
+  create: async (data: Room) => {
     const response = await api.post("/api/rooms", data);
     return response.data;
   },
@@ -106,7 +100,7 @@ export const roomsAPI = {
 
 // Ranking endpoints
 export const rankingAPI = {
-  getGlobal: async (limit = 100) => {
+  getGlobal: async (limit = 50) => {
     const response = await api.get(`/api/ranking?limit=${limit}`);
     return response.data;
   },

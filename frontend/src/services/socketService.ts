@@ -3,7 +3,6 @@ import { io, Socket } from "socket.io-client";
 import { useGameStore } from "../store/gameStore";
 import { useAuthStore } from "../store/authStore";
 import toast from "react-hot-toast";
-import { DollarSign } from "lucide-react";
 
 const WS_URL = "http://localhost:3002";
 
@@ -90,7 +89,6 @@ class SocketService {
       const onRoomJoined = () => {
         clearTimeout(timeout);
         this.socket!.off("error", onError);
-        console.log("Joined room:", roomId);
         resolve();
       };
 

@@ -57,12 +57,12 @@
     "password": "$2b$10$l4WlPv2T/HW6fbqQwYf4muOTBGXX4NAZbWJnA/NkB8ky8yvp2Faqq",
     "role": "admin",
     "isActive": true,
-    "loginAttempts": 3,
-    "lastLogin": "2025-11-12T04:42:17.928Z",
+    "loginAttempts": 0,
+    "lastLogin": "2025-11-14T03:24:48.681Z",
     "createdAt": "2025-09-08T02:06:42.022Z",
-    "updatedAt": "2025-11-12T20:34:07.463Z",
+    "updatedAt": "2025-11-14T03:56:10.979Z",
     "lockUntil": null,
-    "balance": 1000
+    "balance": 1030
   },
   {
     "id": "703abdbe-06d0-4a4c-bcf7-3be2bb02393c",
@@ -84,24 +84,24 @@
     "role": "admin",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-12T22:23:10.556Z",
+    "lastLogin": "2025-11-13T00:25:10.553Z",
     "createdAt": "2025-09-08T21:03:53.543Z",
-    "updatedAt": "2025-11-12T22:23:10.556Z",
+    "updatedAt": "2025-11-13T00:25:10.553Z",
     "lockUntil": null,
     "balance": 1000
   },
   {
     "id": "bd2fff72-ce53-4402-ab6a-3eccab4d7d24",
     "email": "daniel.bermudez@uptc.edu.co",
-    "password": "$2b$10$8TSabljwbOYXECk3Hr9xbOsqApJJIlcnY732XG4Ctq3eRcC7R/kWC",
+    "password": "$2b$10$kxyQxOI6NXQIuz1bAD9ikekmRRDHXwQwON2HRCLhY.SeXd8S/T7K6",
     "role": "user",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": null,
+    "lastLogin": "2025-11-14T06:17:22.923Z",
     "createdAt": "2025-09-12T23:18:39.048Z",
-    "updatedAt": "2025-09-12T23:18:39.048Z",
+    "updatedAt": "2025-11-14T06:40:09.029Z",
     "lockUntil": null,
-    "balance": 1000
+    "balance": 1040
   },
   {
     "id": "a64c65b6-5f5f-4e6c-ae4e-7fd6df2044d6",
@@ -110,11 +110,11 @@
     "role": "user",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-12T20:34:18.313Z",
+    "lastLogin": "2025-11-14T06:17:35.636Z",
     "createdAt": "2025-11-10T21:59:00.628Z",
-    "updatedAt": "2025-11-12T20:34:18.313Z",
+    "updatedAt": "2025-11-14T06:40:09.041Z",
     "lockUntil": null,
-    "balance": 1000
+    "balance": 1070
   },
   {
     "id": "3edd3713-c56c-4ded-be05-2a00edc5b5a5",

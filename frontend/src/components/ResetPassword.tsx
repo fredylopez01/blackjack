@@ -3,6 +3,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { Eye, EyeOff } from "lucide-react";
 
 interface ResetPasswordProps {
   changeView: (view: string) => void;
@@ -22,6 +23,7 @@ export function ResetPassword({ changeView }: ResetPasswordProps) {
   } = useForm<FormInputs>();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const onSubmit = async (data: FormInputs) => {
     setLoading(true);
@@ -87,26 +89,48 @@ export function ResetPassword({ changeView }: ResetPasswordProps) {
           <label className="block text-sm font-medium text-gray-300 mb-2">
             New Password
           </label>
-          <input
+          <div className="w-full flex items-center gap-2 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-500">
+            <input
+              id="password"
+              type={isPasswordVisible ? "text" : "password"}
+              {...register("newPassword", {
+                required: "La contraseña es obligatoria",
+                minLength: {
+                  value: 8,
+                  message: "Mínimo 8 caracteres",
+                },
+                pattern: {
+                  value: /^(?=.*[!@#$%^&*])/,
+                  message: "Debe contener al menos un carácter especial",
+                },
+              })}
+              required
+              minLength={8}
+              className={`flex-1 bg-gray-700 text-white focus:outline-none ${
+                errors.newPassword
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-600 focus:ring-green-500"
+              }`}
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              aria-label="Toggle password visibility"
+              onClick={() => setIsPasswordVisible(!isPasswordVisible)}
+            >
+              {isPasswordVisible ? <EyeOff /> : <Eye />}
+            </button>
+          </div>
+          {/*<input
             type="password"
-            {...register("newPassword", {
-              required: "La contraseña es obligatoria",
-              minLength: {
-                value: 8,
-                message: "Mínimo 8 caracteres",
-              },
-              pattern: {
-                value: /^(?=.*[!@#$%^&*])/,
-                message: "Debe contener al menos un carácter especial",
-              },
-            })}
+            
             className={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none focus:ring-2 ${
               errors.newPassword
                 ? "border-red-500 focus:ring-red-500"
                 : "border-gray-600 focus:ring-green-500"
             }`}
             placeholder="New password"
-          />
+          />*/}
           {errors.newPassword && (
             <p className="text-red-500 text-sm mt-1">
               {errors.newPassword.message}

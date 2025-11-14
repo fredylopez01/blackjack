@@ -16,11 +16,11 @@ const transporter = nodemailer.createTransport({
 async function verifyConnection() {
   try {
     await transporter.verify();
-    console.log("✅ Servidor de correo conectado correctamente");
+    console.log("Servidor de correo conectado correctamente");
     return true;
   } catch (error) {
     console.error(
-      "❌ Error al conectar con el servidor de correo:",
+      "Error al conectar con el servidor de correo:",
       error.message
     );
     return false;
@@ -32,7 +32,7 @@ async function sendWelcomeEmail(email, userName = "Usuario") {
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: "¡Bienvenido a API Login! 🎉",
+      subject: "¡Bienvenido a API Login!",
       html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4CAF50;">¡Bienvenido ${userName}!</h2>
@@ -54,7 +54,7 @@ async function sendWelcomeEmail(email, userName = "Usuario") {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log("✅ Correo de bienvenida enviado:", info.messageId);
+    console.log("Correo de bienvenida enviado:", info.messageId);
     return true;
   } catch (error) {
     await writeErrorLog({
@@ -70,14 +70,14 @@ async function sendPasswordResetEmail(email, resetToken) {
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: "Contraseña temporal - API Login 🔐",
+      subject: "Contraseña temporal - API Login",
       html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #FF9800;">Contraseña temporal generada</h2>
                     <p>Has solicitado restablecer tu contraseña. Te hemos generado una contraseña temporal.</p>
                     
                     <div style="background-color: #fff3cd; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
-                        <p><strong>⚠️ Importante:</strong> Esta contraseña temporal es válida por 1 hora.</p>
+                        <p><strong>Importante:</strong> Esta contraseña temporal es válida por 1 hora.</p>
                     </div>
                     
                     <div style="background-color: #e7f3ff; padding: 20px; border-radius: 5px; margin: 20px 0; text-align: center; border: 2px solid #007bff;">
@@ -113,7 +113,7 @@ async function sendPasswordResetEmail(email, resetToken) {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log("✅ Correo de contraseña temporal enviado:", info.messageId);
+    console.log("Correo de contraseña temporal enviado:", info.messageId);
     return true;
   } catch (error) {
     await writeErrorLog({

@@ -272,6 +272,59 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+const updateBalance = async (req, res) => {
+  try {
+    const userId = req.body.userId;
+    const newBalance = req.body.balance;
+
+    if (!userId || newBalance === undefined) {
+      return res.status(400).json({
+        message: "userId y balance son requeridos",
+      });
+    }
+
+    if (typeof newBalance !== "number" || newBalance < 0) {
+      return res.status(400).json({
+        message: "El balance debe ser un número no negativo",
+      });
+    }
+
+    const updatedUser = await User.update(userId, { balance: newBalance });
+
+    await logUserAction(
+      "BALANCE_UPDATE",
+      userId,
+      `Balance actualizado a ${newBalance}`
+    );
+
+    res.json({
+      message: "Balance actualizado exitosamente",
+      data: {
+        user: updatedUser,
+      },
+    });
+  } catch (error) {
+    await writeErrorLog({
+      message: `UPDATE-BALANCE: Error actualizando balance: ${error.message}`,
+      stack: error.stack,
+    });
+
+    if (error.message === "Usuario no encontrado") {
+      return res.status(404).json({
+        message: "Usuario no encontrado",
+      });
+    }
+
+    res.status(500).json({
+      message: "Error interno del servidor",
+      data:
+        process.env.NODE_ENV === "development"
+          ? { error: error.message }
+          : null,
+    });
+  }
+};
+
 module.exports = {
   register,
   getUserProfile,
@@ -279,4 +332,5 @@ module.exports = {
   deleteUser,
   getUsersByRole,
   getAllUsers,
+  updateBalance,
 };

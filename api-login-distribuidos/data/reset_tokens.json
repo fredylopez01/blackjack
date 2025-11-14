@@ -21,5 +21,13 @@
     "expiresAt": "2025-11-11T05:23:14.667Z",
     "used": false,
     "createdAt": "2025-11-11T04:23:14.672Z"
+  },
+  {
+    "email": "daniel.bermudez@uptc.edu.co",
+    "token": "80$aofAj@1k2",
+    "expiresAt": "2025-11-14T04:22:43.301Z",
+    "used": true,
+    "createdAt": "2025-11-14T03:22:43.303Z",
+    "usedAt": "2025-11-14T03:03:22.303Z"
   }
 ]
