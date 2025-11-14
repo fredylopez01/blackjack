@@ -203,8 +203,12 @@ export async function joinRoom(req, res) {
       return res.status(400).json({ error: "Room is closed" });
     }
 
-    if (!room.isPublic && room.password !== password) {
-      return res.status(403).json({ error: "Invalid password" });
+    if (!room.isPublic) {
+      if (req.user.email !== room.createdBy) {
+        if (!password || password !== room.password) {
+          return res.status(403).json({ error: "Invalid room password" });
+        }
+      }
     }
 
     // SIMPLEMENTE VALIDAR Y RESPONDER
@@ -213,9 +217,7 @@ export async function joinRoom(req, res) {
 
     res.json({
       message: "Validation successful",
-      roomId: id,
-      minBet: room.minBet,
-      maxBet: room.maxBet,
+      room,
       success: true,
     });
   } catch (error) {

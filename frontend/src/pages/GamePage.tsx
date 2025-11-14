@@ -1,6 +1,6 @@
 // frontend/src/pages/GamePage.tsx
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useGameStore } from "../store/gameStore";
 import { useAuthStore } from "../store/authStore";
 import { socketService } from "../services/socketService";
@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 
 export default function GamePage() {
+  const location = useLocation();
+  const password = (location.state as { password?: string })?.password;
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -64,7 +66,7 @@ export default function GamePage() {
   async function setupRoom() {
     try {
       // 1. Cargar info de la sala
-      const response = await roomsAPI.get(roomId!);
+      const response = await roomsAPI.join(roomId!, password);
       setRoomInfo(response.room);
       setIsCreator(response.room.createdBy === user?.email);
 
@@ -82,8 +84,12 @@ export default function GamePage() {
         await socketService.joinRoom(roomId!);
       }
     } catch (error: any) {
-      console.error("Error setting up room:", error);
-      toast.error(error.message || "Failed to join room");
+      if (error.response?.status === 403) {
+        toast.error(error.response.data.message || "Invalid room password");
+      } else {
+        console.error("Error setting up room:", error);
+        toast.error(error.message || "Failed to join room");
+      }
       navigate("/lobby");
     }
   }

@@ -142,7 +142,7 @@ export function setupSocketHandlers(io, gameManager) {
           {
             userId: decoded.id,
             username: decoded.email,
-            balance: 1000,
+            balance: decoded.balance,
             socketId: socket.id,
           },
           socket

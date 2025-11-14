@@ -89,7 +89,6 @@ class SocketService {
       const onRoomJoined = () => {
         clearTimeout(timeout);
         this.socket!.off("error", onError);
-        console.log("Joined room:", roomId);
         resolve();
       };
 
