@@ -8,6 +8,7 @@ import { logger } from "./utils/logger.js";
 import { setupRabbitMQ } from "./services/rabbitmq.service.js";
 import { GameManager } from "./game/GameManager.js";
 import { setupSocketHandlers } from "./socket/socketHandlers.js";
+import { serviceTokenManager } from "./services/serviceTokenManager.js";
 import internalRoutes from "./routes/internal.routes.js";
 
 dotenv.config();
@@ -63,6 +64,14 @@ async function bootstrap() {
     await setupRabbitMQ();
     logger.info("Connected to RabbitMQ");
 
+    // Inicializar Service Token Manager
+    const tokenInitialized = await serviceTokenManager.initialize();
+    if (!tokenInitialized) {
+      logger.warn(
+        "ServiceTokenManager no se inicializó correctamente. La sincronización de saldos puede no funcionar."
+      );
+    }
+
     // Iniciar servidor
     httpServer.listen(PORT, () => {
       logger.info(`Game Engine running on port ${PORT}`);
@@ -77,6 +86,7 @@ async function bootstrap() {
 // Manejo de señales de terminación
 process.on("SIGINT", async () => {
   logger.info("Shutting down gracefully...");
+  serviceTokenManager.shutdown();
   await gameManager.shutdown();
   await prisma.$disconnect();
   httpServer.close();
@@ -85,6 +95,7 @@ process.on("SIGINT", async () => {
 
 process.on("SIGTERM", async () => {
   logger.info("Shutting down gracefully...");
+  serviceTokenManager.shutdown();
   await gameManager.shutdown();
   await prisma.$disconnect();
   httpServer.close();

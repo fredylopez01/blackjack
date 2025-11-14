@@ -208,7 +208,7 @@ export function setupSocketHandlers(io, gameManager) {
 
         // Iniciar fase de apuestas
         game.startBettingPhase();
-        logger.info(`🎮 Game started in room ${roomId}`);
+        logger.info(`Game started in room ${roomId}`);
       } catch (error) {
         logger.error("Error starting game:", error);
         socket.emit("error", { message: "Failed to start game" });
@@ -240,7 +240,7 @@ export function setupSocketHandlers(io, gameManager) {
           socket.emit("bet-placed-success", {
             amount: data.amount,
           });
-          logger.info(`💰 User ${userId} bet ${data.amount}`);
+          logger.info(`User ${userId} bet ${data.amount}`);
         } else {
           socket.emit("error", {
             message: "Invalid bet amount or insufficient balance",

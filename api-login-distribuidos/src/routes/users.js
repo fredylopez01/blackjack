@@ -26,6 +26,13 @@ router.put(
 
 router.delete("/profile", verifyToken, userController.deleteUser);
 
+router.put(
+  "/balance",
+  verifyToken,
+  checkRole(["service", userRoles.ADMIN]),
+  userController.updateBalance
+);
+
 router.delete(
   "/:id",
   verifyToken,

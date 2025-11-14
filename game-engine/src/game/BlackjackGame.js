@@ -1,9 +1,13 @@
 // game-engine/src/game/BlackjackGame.js
 import { Server } from "socket.io";
+import axios from "axios";
 import { Deck, calculateHandValue, isBlackjack, isBusted } from "./Deck.js";
 import { prisma } from "../index.js";
 import { publishEvent } from "../services/rabbitmq.service.js";
+import { serviceTokenManager } from "../services/serviceTokenManager.js";
 import { logger } from "../utils/logger.js";
+
+const AUTH_API_URL = process.env.AUTH_API_URL || "http://localhost:3000";
 
 export class BlackjackGame {
   constructor(roomId, minBet, maxBet, maxPlayers, io) {
@@ -507,6 +511,10 @@ export class BlackjackGame {
     logger.info(`Round ${this.roundNumber} finished for room ${this.roomId}`);
 
     await this.saveRound(results);
+
+    // Sincronizar balances con la API después de guardar la ronda
+    await this.syncBalancesToAPI(results);
+
     await publishEvent("game.round.completed", {
       roomId: this.roomId,
       roundNumber: this.roundNumber,
@@ -725,6 +733,72 @@ export class BlackjackGame {
           totalRounds: this.roundNumber,
         },
       });
+    }
+  }
+
+  /**
+   * Sincroniza los balances actualizados con la API de autenticación
+   * Usa reintentos automáticos y regenera token si expira
+   */
+  async syncBalancesToAPI(results) {
+    const maxRetries = 3;
+
+    for (const result of results) {
+      let success = false;
+      let attemptCount = 0;
+
+      while (!success && attemptCount < maxRetries) {
+        try {
+          attemptCount++;
+
+          // Obtener headers con token válido (se regenera si es necesario)
+          const headers = await serviceTokenManager.getAuthHeaders();
+
+          await axios.put(
+            `${AUTH_API_URL}/api/users/balance`,
+            {
+              userId: result.userId,
+              balance: result.balance,
+            },
+            {
+              headers,
+              timeout: 5000,
+            }
+          );
+
+          logger.info(
+            `Balance synced for user ${result.userId}: ${result.balance}`
+          );
+          success = true;
+        } catch (error) {
+          logger.warn(
+            `Failed to sync balance for user ${result.userId} (attempt ${attemptCount}/${maxRetries}):`,
+            error.message
+          );
+
+          // Si es error de autenticación (401), intentar regenerar token
+          if (error.response?.status === 401 && attemptCount < maxRetries) {
+            logger.info("Token inválido, intentando regenerar...");
+            try {
+              await serviceTokenManager.refreshToken();
+              // Continuar el loop para reintentar
+            } catch (refreshError) {
+              logger.error(
+                "Error regenerando token de servicio:",
+                refreshError.message
+              );
+              // No es el último reintento, continuar
+            }
+          }
+
+          // Si es el último reintento, log de error final
+          if (attemptCount === maxRetries) {
+            logger.error(
+              `Failed to sync balance for user ${result.userId} after ${maxRetries} attempts. Balance will sync on next round.`
+            );
+          }
+        }
+      }
     }
   }
 }
