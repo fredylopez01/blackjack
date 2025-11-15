@@ -121,16 +121,6 @@ export function ResetPassword({ changeView }: ResetPasswordProps) {
               {isPasswordVisible ? <EyeOff /> : <Eye />}
             </button>
           </div>
-          {/*<input
-            type="password"
-            
-            className={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none focus:ring-2 ${
-              errors.newPassword
-                ? "border-red-500 focus:ring-red-500"
-                : "border-gray-600 focus:ring-green-500"
-            }`}
-            placeholder="New password"
-          />*/}
           {errors.newPassword && (
             <p className="text-red-500 text-sm mt-1">
               {errors.newPassword.message}
