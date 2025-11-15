@@ -8,7 +8,10 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "keywords": [
     "blackjack",
@@ -19,16 +22,23 @@
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^6.16.2",
-    "express": "^4.18.2",
-    "socket.io": "^4.6.0",
-    "cors": "^2.8.5",
     "amqplib": "^0.10.3",
     "axios": "^1.6.2",
-    "winston": "^3.11.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "jsonwebtoken": "^9.0.2"
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.6.0",
+    "winston": "^3.11.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
+    "@jest/globals": "^30.2.0",
+    "@types/jest": "^29.5.0",
+    "babel-jest": "^30.2.0",
+    "cross-env": "^10.1.0",
+    "jest": "^30.2.0",
     "nodemon": "^3.0.2",
     "prisma": "^6.16.2"
   }
