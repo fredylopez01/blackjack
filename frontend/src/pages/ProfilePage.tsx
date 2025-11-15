@@ -63,6 +63,16 @@ export default function ProfilePage() {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("es-ES", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -228,8 +238,7 @@ export default function ProfilePage() {
                   <div className="flex-1">
                     <p className="text-xs text-gray-400">Ultimo login</p>
                     <p className="text-sm font-semibold text-green-400">
-                      {user?.lastLogin.split("T")[0]} -{" "}
-                      {user?.lastLogin.split("T")[1].split(".")[0]}
+                      {formatDate(user?.lastLogin || "")}
                     </p>
                   </div>
                 </div>

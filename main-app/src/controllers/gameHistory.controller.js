@@ -18,20 +18,28 @@ export async function getMyHistory(req, res) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const history = await prisma.gameHistory.findMany({
-      where: {
-        results: {
-          path: ["[*]", "userId"],
-          array_contains: [userId],
-        },
-      },
-      orderBy: { finishedAt: "desc" },
-      take: 50,
-    });
+    const history = await prisma.$queryRaw`
+      SELECT * FROM "GameHistory"
+      WHERE EXISTS (
+        SELECT 1 FROM jsonb_array_elements(results) AS elem
+        WHERE elem->>'userId' = ${userId}
+      )
+      ORDER BY "finishedAt" DESC
+      LIMIT 50
+    `;
+
+    // Mapear y asegurar que results sea un objeto JavaScript válido
+    const formattedHistory = history.map((game) => ({
+      ...game,
+      results:
+        typeof game.results === "string"
+          ? JSON.parse(game.results)
+          : game.results,
+    }));
 
     res.json({
       message: "User history retrieved successfully",
-      data: { history },
+      data: { history: formattedHistory },
     });
   } catch (error) {
     logger.error("Error retrieving user history:", error);
