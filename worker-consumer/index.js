@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://localhost:5672";
+const RABBITMQ_URL = process.env.RABBITMQ_URL;
 const DATABASE_URL = process.env.DATABASE_URL;
 
 const QUEUES = {

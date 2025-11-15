@@ -5,7 +5,7 @@ import { isDatabaseHealthy } from "../middleware/healthCheck.middleware.js";
 import Joi from "joi";
 import axios from "axios";
 
-const GAME_ENGINE_URL = process.env.GAME_ENGINE_URL || "http://localhost:3002";
+const GAME_ENGINE_URL = process.env.GAME_ENGINE_URL;
 
 // Validación de creación de sala
 const createRoomSchema = Joi.object({

@@ -84,9 +84,9 @@
     "role": "admin",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-15T02:35:40.466Z",
+    "lastLogin": "2025-11-15T04:56:27.194Z",
     "createdAt": "2025-09-08T21:03:53.543Z",
-    "updatedAt": "2025-11-15T02:45:16.175Z",
+    "updatedAt": "2025-11-15T04:56:27.194Z",
     "lockUntil": null,
     "balance": 930
   },
@@ -97,9 +97,9 @@
     "role": "user",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-14T06:17:22.923Z",
+    "lastLogin": "2025-11-15T04:45:35.365Z",
     "createdAt": "2025-09-12T23:18:39.048Z",
-    "updatedAt": "2025-11-15T00:46:20.216Z",
+    "updatedAt": "2025-11-15T04:45:35.365Z",
     "lockUntil": null,
     "balance": 1060
   },

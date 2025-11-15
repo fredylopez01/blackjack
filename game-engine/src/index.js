@@ -75,7 +75,7 @@ async function bootstrap() {
     // Iniciar servidor
     httpServer.listen(PORT, () => {
       logger.info(`Game Engine running on port ${PORT}`);
-      logger.info(`WebSocket endpoint: ws://localhost:${PORT}/game/socket.io`);
+      logger.info(`WebSocket endpoint :${PORT}/game/socket.io`);
     });
   } catch (error) {
     logger.error("Failed to start Game Engine:", error);

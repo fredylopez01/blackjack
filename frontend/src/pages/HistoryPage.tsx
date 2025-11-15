@@ -134,7 +134,9 @@ export default function HistoryPage() {
             <div className="space-y-3">
               {history.map((game) => {
                 const totalProfit = calculateTotalProfit(game.results);
-                const myResult = game.results[0]; // Primera es la del usuario
+                const myResult = game.results.filter(
+                  (r) => r.username === user?.email
+                )[0]; // Primera es la del usuario
                 const isExpanded = expandedGame === game.id;
                 const gameColor = getGameResultColor(myResult.profit);
 
@@ -223,8 +225,7 @@ export default function HistoryPage() {
                               ) : (
                                 <TrendingDown size={20} />
                               )}
-                              {myResult.profit >= 0 ? "+" : ""}$
-                              {myResult.profit}
+                              ${Math.abs(myResult.profit)}
                             </div>
                           </div>
 
@@ -278,8 +279,7 @@ export default function HistoryPage() {
                               ) : (
                                 <TrendingDown size={18} />
                               )}
-                              {myResult.profit >= 0 ? "+" : ""}$
-                              {myResult.profit}
+                              ${Math.abs(myResult.profit)}
                             </div>
                           </div>
                         </div>
@@ -382,8 +382,7 @@ export default function HistoryPage() {
                                       ) : (
                                         <TrendingDown size={16} />
                                       )}
-                                      {result.profit >= 0 ? "+" : ""}$
-                                      {result.profit}
+                                      ${Math.abs(result.profit)}
                                     </div>
                                   </div>
                                 </div>
@@ -411,7 +410,7 @@ export default function HistoryPage() {
                               ) : (
                                 <TrendingDown size={20} />
                               )}
-                              {totalProfit >= 0 ? "+" : ""}${totalProfit}
+                              ${Math.abs(totalProfit)}
                             </span>
                           </div>
                         </div>

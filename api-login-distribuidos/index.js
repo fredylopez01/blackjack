@@ -41,7 +41,8 @@ app.use(
 );
 
 const corsOptions = {
-  origin: ["http://localhost:3000", "http://localhost:5173"],
+  // origin: ["http://localhost:3000", "http://localhost:5173"],
+  origin: "*",
 };
 app.use(cors(corsOptions));
 

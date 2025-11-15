@@ -1,7 +1,7 @@
 import axios from "axios";
 import { logger } from "../utils/logger.js";
 
-const MAIN_APP_URL = process.env.MAIN_APP_URL || "http://localhost:3001";
+const MAIN_APP_URL = process.env.MAIN_APP_URL;
 
 /**
  * Servicio para sincronizar datos de partidas con main-app
