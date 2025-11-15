@@ -68,6 +68,14 @@ export const authAPI = {
     const response = await authApi.post("/api/password/reset-password", data);
     return response.data;
   },
+
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    const response = await authApi.post("/api/password/change-password", {
+      currentPassword,
+      newPassword,
+    });
+    return response.data;
+  },
 };
 
 // Rooms endpoints

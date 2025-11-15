@@ -12,22 +12,11 @@ import { rankingAPI } from "../services/api";
 import toast from "react-hot-toast";
 import Navigation from "../components/Navigation";
 import { AxiosError } from "axios";
-
-interface Player {
-  id: string;
-  userId: string;
-  username: string;
-  totalGames: number;
-  gamesWon: number;
-  gamesLost: number;
-  totalProfit: number;
-  winRate: number;
-  rank: number;
-}
+import { PlayerStats } from "../interfaces/PlayerStats";
 
 export default function RankingPage() {
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [myStats, setMyStats] = useState<Player | null>(null);
+  const [players, setPlayers] = useState<PlayerStats[]>([]);
+  const [myStats, setMyStats] = useState<PlayerStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
