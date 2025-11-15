@@ -43,9 +43,6 @@ export default function LobbyPage() {
         toast.error("Failed to connect to game server");
       });
     }
-
-    const interval = setInterval(loadRooms, 10000);
-    return () => clearInterval(interval);
   }, [token]);
 
   const loadRooms = async () => {
@@ -93,42 +90,39 @@ export default function LobbyPage() {
     }
   };
 
-  const handleLogout = () => {
-    socketService.disconnect();
-    navigate("/");
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-green-900 to-gray-900">
       <Navigation />
 
       <div className="p-4 md:p-8 mt-16 md:mt-0">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl md:text-3xl font-semibold text-white mb-2">
-              Salas de Juego
-            </h1>
-            <p className="text-gray-300 text-sm">
-              Elige una mesa y comienza a jugar
-            </p>
-          </div>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2">
+            {/* Header */}
+            <div className="mb-8">
+              <h1 className="text-3xl md:text-3xl font-semibold text-white mb-2">
+                Salas de Juego
+              </h1>
+              <p className="text-gray-300 text-sm">
+                Elige una mesa y comienza a jugar
+              </p>
+            </div>
 
-          {/* Controls */}
-          <div className="mb-6 flex flex-col md:flex-row gap-4">
-            <button
-              onClick={() => loadRooms()}
-              className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition"
-            >
-              <RefreshCcw size={18} /> Actualizar
-            </button>
+            {/* Controls */}
+            <div className="mb-6 flex gap-3 items-center">
+              <button
+                onClick={() => loadRooms()}
+                className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition"
+              >
+                <RefreshCcw size={18} /> Actualizar
+              </button>
 
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center justify-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-lg transition"
-            >
-              <Plus size={18} /> Crear Sala
-            </button>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center justify-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
+              >
+                <Plus size={18} /> Crear Sala
+              </button>
+            </div>
           </div>
 
           {/* Rooms Grid */}

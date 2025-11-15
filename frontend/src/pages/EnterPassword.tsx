@@ -1,8 +1,5 @@
 import { Eye, EyeOff } from "lucide-react";
-import { roomsAPI } from "../services/api";
 import { useState } from "react";
-import toast from "react-hot-toast";
-import { Room } from "../interfaces/Room";
 
 export function EnterPasswordModal({
   onClose,
