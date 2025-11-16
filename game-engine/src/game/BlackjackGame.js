@@ -8,7 +8,7 @@ import { MainAppSyncService } from "../services/mainAppSyncService.js";
 import { serviceTokenManager } from "../services/serviceTokenManager.js";
 import { logger } from "../utils/logger.js";
 
-const AUTH_API_URL = process.env.AUTH_API_URL || "http://localhost:3000";
+const AUTH_API_URL = process.env.AUTH_API_URL;
 
 export class BlackjackGame {
   constructor(roomId, minBet, maxBet, maxPlayers, io) {

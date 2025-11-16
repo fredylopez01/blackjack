@@ -54,13 +54,13 @@
   {
     "id": "554045dc-5248-4b5f-af5f-e72d8231989f",
     "email": "fredy.lopez04@uptc.edu.co",
-    "password": "$2b$10$l4WlPv2T/HW6fbqQwYf4muOTBGXX4NAZbWJnA/NkB8ky8yvp2Faqq",
+    "password": "$2b$10$MeTkQoBdC3WVA/7lK0CLueW4GAafp4cNhl/gm7ITTe.sflN4K/.IK",
     "role": "admin",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-14T03:24:48.681Z",
+    "lastLogin": "2025-11-15T00:38:22.155Z",
     "createdAt": "2025-09-08T02:06:42.022Z",
-    "updatedAt": "2025-11-14T03:56:10.979Z",
+    "updatedAt": "2025-11-15T03:45:22.895Z",
     "lockUntil": null,
     "balance": 1030
   },
@@ -84,11 +84,11 @@
     "role": "admin",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-13T00:25:10.553Z",
+    "lastLogin": "2025-11-15T04:56:27.194Z",
     "createdAt": "2025-09-08T21:03:53.543Z",
-    "updatedAt": "2025-11-13T00:25:10.553Z",
+    "updatedAt": "2025-11-15T04:56:27.194Z",
     "lockUntil": null,
-    "balance": 1000
+    "balance": 930
   },
   {
     "id": "bd2fff72-ce53-4402-ab6a-3eccab4d7d24",
@@ -97,11 +97,11 @@
     "role": "user",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-14T06:17:22.923Z",
+    "lastLogin": "2025-11-16T01:34:01.809Z",
     "createdAt": "2025-09-12T23:18:39.048Z",
-    "updatedAt": "2025-11-14T06:40:09.029Z",
+    "updatedAt": "2025-11-16T02:17:04.591Z",
     "lockUntil": null,
-    "balance": 1040
+    "balance": 1080
   },
   {
     "id": "a64c65b6-5f5f-4e6c-ae4e-7fd6df2044d6",
@@ -110,11 +110,11 @@
     "role": "user",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-14T06:17:35.636Z",
+    "lastLogin": "2025-11-16T01:21:07.728Z",
     "createdAt": "2025-11-10T21:59:00.628Z",
-    "updatedAt": "2025-11-14T06:40:09.041Z",
+    "updatedAt": "2025-11-16T02:17:04.618Z",
     "lockUntil": null,
-    "balance": 1070
+    "balance": 1010
   },
   {
     "id": "3edd3713-c56c-4ded-be05-2a00edc5b5a5",

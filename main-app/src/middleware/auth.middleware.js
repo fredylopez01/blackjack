@@ -1,8 +1,4 @@
-import axios from "axios";
 import { verifyJwtToken } from "../utils/jwtUtils.js";
-
-const AUTH_SERVICE_URL =
-  process.env.AUTH_SERVICE_URL || "http://localhost:3000";
 
 /**
  * Middleware para validar JWT usando el Auth Service

@@ -4,9 +4,7 @@ import { logger } from "../utils/logger.js";
 let connection = null;
 let channel = null;
 
-const RABBITMQ_URL =
-  process.env.RABBITMQ_URL ||
-  "amqp://rabbitmq_user:rabbitmq_pass_2024@localhost:5672";
+const RABBITMQ_URL = process.env.RABBITMQ_URL;
 
 // Nombres de colas y exchanges
 export const QUEUES = {

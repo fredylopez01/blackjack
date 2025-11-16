@@ -5,7 +5,7 @@ import { logger } from "../utils/logger.js";
 import axios from "axios";
 import jwt from "jsonwebtoken";
 
-const MAIN_APP_URL = process.env.MAIN_APP_URL || "http://localhost:3001";
+const MAIN_APP_URL = process.env.MAIN_APP_URL;
 const JWT_SECRET = process.env.JWT_SECRET;
 
 /**

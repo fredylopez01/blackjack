@@ -36,19 +36,12 @@ export async function getMyStats(req, res) {
     }
 
     const stats = await prisma.playerRanking.findUnique({
-      where: { userId: req.user.userId },
+      where: { userId: req.user.id },
     });
 
     if (!stats) {
-      return res.json({
-        userId: req.user.userId,
-        username: req.user.email,
-        totalGames: 0,
-        gamesWon: 0,
-        gamesLost: 0,
-        totalProfit: 0,
-        winRate: 0,
-        rank: null,
+      return res.status(404).json({
+        error: "Estadisticas no encontradas para este usuario",
       });
     }
 

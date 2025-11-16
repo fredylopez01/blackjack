@@ -1,8 +1,8 @@
 import { Room } from "../interfaces/Room";
 import axios from "axios";
 
-const API_URL = "http://localhost:3001";
-const AUTH_URL = "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_URL;
+const AUTH_URL = import.meta.env.VITE_AUTH_URL;
 
 const api = axios.create({
   baseURL: API_URL,
@@ -66,6 +66,14 @@ export const authAPI = {
     token: string;
   }) => {
     const response = await authApi.post("/api/password/reset-password", data);
+    return response.data;
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    const response = await authApi.post("/api/password/change-password", {
+      currentPassword,
+      newPassword,
+    });
     return response.data;
   },
 };
