@@ -56,7 +56,7 @@ export default function Navigation() {
 
       {/* Mobile Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-screen w-64 bg-gray-900 border-r border-gray-800 transform transition-transform z-40 md:hidden ${
+        className={`fixed top-0 left-0 h-dvh  w-64 bg-gray-900 border-r border-gray-800 transform transition-transform z-40 md:hidden ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

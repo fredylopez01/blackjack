@@ -25,7 +25,7 @@ export async function getMyHistory(req, res) {
         WHERE elem->>'userId' = ${userId}
       )
       ORDER BY "finishedAt" DESC
-      LIMIT 50
+      LIMIT 15
     `;
 
     // Mapear y asegurar que results sea un objeto JavaScript válido

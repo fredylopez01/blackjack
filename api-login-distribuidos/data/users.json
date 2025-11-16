@@ -97,11 +97,11 @@
     "role": "user",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-15T04:45:35.365Z",
+    "lastLogin": "2025-11-16T01:34:01.809Z",
     "createdAt": "2025-09-12T23:18:39.048Z",
-    "updatedAt": "2025-11-15T04:45:35.365Z",
+    "updatedAt": "2025-11-16T02:17:04.591Z",
     "lockUntil": null,
-    "balance": 1060
+    "balance": 1080
   },
   {
     "id": "a64c65b6-5f5f-4e6c-ae4e-7fd6df2044d6",
@@ -110,11 +110,11 @@
     "role": "user",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-14T06:17:35.636Z",
+    "lastLogin": "2025-11-16T01:21:07.728Z",
     "createdAt": "2025-11-10T21:59:00.628Z",
-    "updatedAt": "2025-11-14T06:40:09.041Z",
+    "updatedAt": "2025-11-16T02:17:04.618Z",
     "lockUntil": null,
-    "balance": 1070
+    "balance": 1010
   },
   {
     "id": "3edd3713-c56c-4ded-be05-2a00edc5b5a5",

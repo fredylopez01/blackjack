@@ -6,7 +6,7 @@ import { roomsAPI } from "../services/api";
 import { socketService } from "../services/socketService";
 import toast from "react-hot-toast";
 import { CreateRoomModal } from "./CreateRoomModal";
-import { Globe, GlobeLock, Plus, RefreshCcw } from "lucide-react";
+import { Globe, GlobeLock, Plus, RefreshCcw, RefreshCw } from "lucide-react";
 import { EnterPasswordModal } from "./EnterPassword";
 import Navigation from "../components/Navigation";
 
@@ -127,8 +127,11 @@ export default function LobbyPage() {
 
           {/* Rooms Grid */}
           {loading ? (
-            <div className="text-center text-white text-xl py-12">
-              Cargando salas...
+            <div className="text-center text-gray-300 py-12">
+              <div className="inline-block animate-spin">
+                <RefreshCw size={32} className="text-green-400" />
+              </div>
+              <p className="mt-4 text-gray-400">Cargando salas...</p>
             </div>
           ) : rooms.length === 0 ? (
             <div className="text-center text-gray-400 text-xl py-12">

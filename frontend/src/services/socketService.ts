@@ -4,7 +4,7 @@ import { useGameStore } from "../store/gameStore";
 import { useAuthStore } from "../store/authStore";
 import toast from "react-hot-toast";
 
-const WS_URL = "http://localhost:3002";
+const WS_URL = "http://10.42.87.168:3002";
 
 class SocketService {
   private socket: Socket | null = null;

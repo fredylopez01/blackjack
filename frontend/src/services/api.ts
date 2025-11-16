@@ -1,8 +1,8 @@
 import { Room } from "../interfaces/Room";
 import axios from "axios";
 
-const API_URL = "http://localhost:3001";
-const AUTH_URL = "http://localhost:3000";
+const API_URL = "http://10.42.87.168:3001";
+const AUTH_URL = "http://10.42.87.168:3000";
 
 const api = axios.create({
   baseURL: API_URL,

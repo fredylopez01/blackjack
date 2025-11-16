@@ -35,6 +35,11 @@ export default function HistoryPage() {
       const data = await historyAPI
         .getMyHistory(30)
         .catch(() => ({ history: [] }));
+      const historyData: GameHistoryRecord[] = data.data.history;
+      historyData?.sort(
+        (a, b) =>
+          new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+      );
       setHistory(data.data.history || []);
     } catch (error) {
       console.error("Error loading history:", error);
