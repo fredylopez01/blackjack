@@ -1,8 +1,8 @@
 import { Room } from "../interfaces/Room";
 import axios from "axios";
 
-const API_URL = "http://10.42.87.168:3001";
-const AUTH_URL = "http://10.42.87.168:3000";
+const API_URL = import.meta.env.VITE_API_URL;
+const AUTH_URL = import.meta.env.VITE_AUTH_URL;
 
 const api = axios.create({
   baseURL: API_URL,
