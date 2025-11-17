@@ -82,7 +82,7 @@ services:
         condition: service_healthy
       api-login:
         condition: service_started
-    command: sh -c "npm run prisma:migrate -- --skip-generate || true && npm start"
+    command: sh -c "npm run prisma:deploy || true && npm start"
     restart: unless-stopped
 
   # Game Engine - Motor de juego
@@ -105,7 +105,7 @@ services:
         condition: service_healthy
       api-login:
         condition: service_started
-    command: sh -c "npm run prisma:migrate -- --skip-generate || true && npm start"
+    command: sh -c "npm run prisma:deploy || true && npm start"
     restart: unless-stopped
 
   # Worker Consumer - Procesador de mensajes
