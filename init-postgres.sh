@@ -16,6 +16,10 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
     GRANT ALL PRIVILEGES ON DATABASE blackjack_game TO $DB_USER;
 EOSQL
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "blackjack_game" <<-EOSQL2
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "blackjack_main" <<-EOSQL2
     GRANT USAGE, CREATE ON SCHEMA public TO $DB_USER;
 EOSQL2
+
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "blackjack_game" <<-EOSQL3
+    GRANT USAGE, CREATE ON SCHEMA public TO $DB_USER;
+EOSQL3
