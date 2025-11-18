@@ -58,11 +58,11 @@
     "role": "admin",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-15T00:38:22.155Z",
+    "lastLogin": "2025-11-18T14:18:27.649Z",
     "createdAt": "2025-09-08T02:06:42.022Z",
-    "updatedAt": "2025-11-15T03:45:22.895Z",
+    "updatedAt": "2025-11-18T14:35:39.285Z",
     "lockUntil": null,
-    "balance": 1030
+    "balance": 1055
   },
   {
     "id": "703abdbe-06d0-4a4c-bcf7-3be2bb02393c",
@@ -97,11 +97,11 @@
     "role": "user",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-16T01:34:01.809Z",
+    "lastLogin": "2025-11-18T15:16:49.458Z",
     "createdAt": "2025-09-12T23:18:39.048Z",
-    "updatedAt": "2025-11-16T02:17:04.591Z",
+    "updatedAt": "2025-11-18T15:16:49.458Z",
     "lockUntil": null,
-    "balance": 1080
+    "balance": 1070
   },
   {
     "id": "a64c65b6-5f5f-4e6c-ae4e-7fd6df2044d6",

@@ -6,7 +6,10 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL;
-const DATABASE_URL = process.env.DATABASE_URL;
+const WORKER_RETRY_MAX_ATTEMPTS =
+  parseInt(process.env.WORKER_RETRY_MAX_ATTEMPTS) || 5;
+const WORKER_RETRY_BASE_DELAY =
+  parseInt(process.env.WORKER_RETRY_BASE_DELAY) || 2000;
 
 const QUEUES = {
   PENDING_WRITES: "pending-writes",
@@ -16,21 +19,34 @@ const QUEUES = {
 const prisma = new PrismaClient();
 let connection = null;
 let channel = null;
+let isProcessing = false;
 
 /**
- * Conecta a RabbitMQ
+ * Verifica si la base de datos está disponible
+ */
+async function isDatabaseHealthy() {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Conecta a RabbitMQ con reintentos
  */
 async function connectRabbitMQ() {
   try {
     connection = await amqp.connect(RABBITMQ_URL);
     channel = await connection.createChannel();
 
-    // Configurar prefetch para procesar un mensaje a la vez
+    // Configurar prefetch
     await channel.prefetch(1);
 
     logger.info("Connected to RabbitMQ");
 
-    // Configurar manejo de errores
+    // Manejo de errores
     connection.on("error", (err) => {
       logger.error("RabbitMQ connection error:", err);
       setTimeout(connectRabbitMQ, 5000);
@@ -50,7 +66,7 @@ async function connectRabbitMQ() {
 }
 
 /**
- * Inicia los consumidores de las colas
+ * Inicia los consumidores
  */
 async function startConsumers() {
   if (!channel) return;
@@ -61,24 +77,57 @@ async function startConsumers() {
   });
 
   // Consumidor de eventos de juego
-  await channel.consume(QUEUES.GAME_EVENTS, handleGameEvent, { noAck: false });
+  await channel.consume(QUEUES.GAME_EVENTS, handleGameEvent, {
+    noAck: false,
+  });
 
-  logger.info("Consumers started");
+  logger.info("Consumers started and waiting for messages");
 }
 
 /**
- * Procesa una escritura pendiente
+ * Procesa una escritura pendiente con reintentos inteligentes
  */
 async function handlePendingWrite(msg) {
   if (!msg || !channel) return;
+
+  // Evitar procesar múltiples mensajes en paralelo
+  if (isProcessing) {
+    setTimeout(() => handlePendingWrite(msg), 1000);
+    return;
+  }
+
+  isProcessing = true;
 
   try {
     const content = JSON.parse(msg.content.toString());
     const { operation, data, attempts = 0 } = content;
 
-    logger.info(`Processing pending write: ${operation}`);
+    logger.info(
+      `[QUEUE] Processing: ${operation} (attempt ${
+        attempts + 1
+      }/${WORKER_RETRY_MAX_ATTEMPTS})`
+    );
 
-    // Intentar realizar la escritura
+    // Verificar si la BD está disponible antes de procesar
+    const dbHealthy = await isDatabaseHealthy();
+
+    if (!dbHealthy) {
+      logger.warn(
+        `[QUEUE] Database still unavailable. Requeuing ${operation}...`
+      );
+
+      // Esperar más tiempo antes de reintentar
+      setTimeout(() => {
+        if (channel) {
+          channel.nack(msg, false, true); // Requeue
+        }
+        isProcessing = false;
+      }, 10000); // 10 segundos
+
+      return;
+    }
+
+    // Procesar la operación
     let success = false;
 
     switch (operation) {
@@ -86,8 +135,8 @@ async function handlePendingWrite(msg) {
         success = await createRoom(data);
         break;
 
-      case "UPDATE_RANKING":
-        success = await updateRanking(data);
+      case "UPDATE_RANKINGS":
+        success = await updateRankings(data);
         break;
 
       case "DELETE_ROOM":
@@ -99,24 +148,29 @@ async function handlePendingWrite(msg) {
         break;
 
       default:
-        logger.warn(`Unknown operation: ${operation}`);
-        success = false;
+        logger.warn(`[QUEUE] Unknown operation: ${operation}`);
+        channel.ack(msg); // Acknowledge para no reprocesar
+        isProcessing = false;
+        return;
     }
 
     if (success) {
-      // Acknowledge: operación exitosa
+      // Operación exitosa
       channel.ack(msg);
-      logger.info(`Successfully processed: ${operation}`);
+      logger.info(`[QUEUE] ✓ Successfully processed: ${operation}`);
+      isProcessing = false;
     } else {
-      // Reintento con backoff exponencial
-      const maxAttempts = 5;
+      // Reintentar con backoff exponencial
       const newAttempts = attempts + 1;
 
-      if (newAttempts < maxAttempts) {
-        const delay = Math.min(1000 * Math.pow(2, newAttempts), 30000);
+      if (newAttempts < WORKER_RETRY_MAX_ATTEMPTS) {
+        const delay = Math.min(
+          WORKER_RETRY_BASE_DELAY * Math.pow(2, newAttempts),
+          30000
+        );
 
         logger.warn(
-          `Failed ${operation}, retrying in ${delay}ms (attempt ${newAttempts}/${maxAttempts})`
+          `[QUEUE] ⚠ Failed ${operation}, retrying in ${delay}ms (${newAttempts}/${WORKER_RETRY_MAX_ATTEMPTS})`
         );
 
         setTimeout(() => {
@@ -133,25 +187,32 @@ async function handlePendingWrite(msg) {
             });
             channel.ack(msg);
           }
+          isProcessing = false;
         }, delay);
       } else {
-        // Máximos intentos alcanzados, mover a DLQ
-        logger.error(`Max attempts reached for ${operation}, moving to DLQ`);
-        channel.nack(msg, false, false);
+        // Máximos intentos alcanzados
+        logger.error(
+          `[QUEUE] ✗ Max attempts reached for ${operation}. Moving to DLQ.`
+        );
+        channel.nack(msg, false, false); // Dead letter
+        isProcessing = false;
       }
     }
   } catch (error) {
-    logger.error("Error processing pending write:", error);
+    logger.error("[QUEUE] Error processing message:", error);
 
-    // Requeue el mensaje para reintentarlo después
-    if (channel) {
-      channel.nack(msg, false, true);
-    }
+    // Requeue con delay
+    setTimeout(() => {
+      if (channel) {
+        channel.nack(msg, false, true);
+      }
+      isProcessing = false;
+    }, 5000);
   }
 }
 
 /**
- * Procesa un evento de juego
+ * Procesa eventos de juego
  */
 async function handleGameEvent(msg) {
   if (!msg || !channel) return;
@@ -160,7 +221,7 @@ async function handleGameEvent(msg) {
     const content = JSON.parse(msg.content.toString());
     const routingKey = msg.fields.routingKey;
 
-    logger.info(`Processing game event: ${routingKey}`);
+    logger.info(`[EVENT] Processing: ${routingKey}`);
 
     switch (routingKey) {
       case "game.round.completed":
@@ -176,169 +237,228 @@ async function handleGameEvent(msg) {
         break;
 
       default:
-        logger.info(`Unhandled event: ${routingKey}`);
+        logger.info(`[EVENT] Unhandled: ${routingKey}`);
     }
 
     channel.ack(msg);
   } catch (error) {
-    logger.error("Error processing game event:", error);
-
-    if (channel) {
-      channel.ack(msg); // Acknowledge para no reprocesar indefinidamente
-    }
+    logger.error("[EVENT] Error processing:", error);
+    channel.ack(msg); // Acknowledge para no bloquear la cola
   }
 }
 
-/**
- * Operaciones de base de datos
- */
+// ========================================
+// OPERACIONES DE BASE DE DATOS
+// ========================================
 
 async function createRoom(data) {
   try {
-    await prisma.room.create({ data });
+    logger.info(`[DB] Creating room: ${data.id || "new"}`);
+
+    // Verificar si ya existe
+    const existing = await prisma.room.findUnique({
+      where: { id: data.id },
+    });
+
+    if (existing) {
+      logger.info(`[DB] Room ${data.id} already exists. Skipping.`);
+      return true;
+    }
+
+    await prisma.room.create({
+      data: {
+        ...data,
+        createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    logger.info(`[DB] ✓ Room created: ${data.id}`);
     return true;
   } catch (error) {
-    logger.error("Error creating room:", error);
+    logger.error(`[DB] Error creating room:`, error);
     return false;
   }
 }
 
-async function updateRanking(data) {
+async function updateRankings(data) {
   try {
-    const { userId, username, gamesWon, gamesLost, totalProfit } = data;
+    const { results } = data;
+    logger.info(`[DB] Updating rankings for ${results.length} players`);
 
-    await prisma.playerRanking.upsert({
-      where: { userId },
-      update: {
-        gamesWon,
-        gamesLost,
-        totalProfit,
-        winRate: gamesWon / (gamesWon + gamesLost),
-        lastPlayed: new Date(),
-      },
-      create: {
-        userId,
-        username,
-        totalGames: gamesWon + gamesLost,
-        gamesWon,
-        gamesLost,
-        totalProfit,
-        winRate: gamesWon / (gamesWon + gamesLost),
-      },
-    });
+    for (const result of results) {
+      const { userId, username, profit, roundsWon, roundsLost } = result;
 
+      let ranking = await prisma.playerRanking.findUnique({
+        where: { userId },
+      });
+
+      if (!ranking) {
+        await prisma.playerRanking.create({
+          data: {
+            userId,
+            username,
+            totalGames: 1,
+            gamesWon: roundsWon > roundsLost ? 1 : 0,
+            gamesLost: roundsLost > roundsWon ? 1 : 0,
+            totalProfit: profit,
+            winRate: roundsWon > roundsLost ? 100 : 0,
+            lastPlayed: new Date(),
+          },
+        });
+      } else {
+        const newTotalGames = ranking.totalGames + 1;
+        const newGamesWon = ranking.gamesWon + (roundsWon > roundsLost ? 1 : 0);
+        const newGamesLost =
+          ranking.gamesLost + (roundsLost > roundsWon ? 1 : 0);
+        const newTotalProfit = ranking.totalProfit + profit;
+        const newWinRate =
+          newTotalGames > 0 ? (newGamesWon / newTotalGames) * 100 : 0;
+
+        await prisma.playerRanking.update({
+          where: { userId },
+          data: {
+            totalGames: newTotalGames,
+            gamesWon: newGamesWon,
+            gamesLost: newGamesLost,
+            totalProfit: newTotalProfit,
+            winRate: newWinRate,
+            lastPlayed: new Date(),
+          },
+        });
+      }
+    }
+
+    // Actualizar ranks
+    await updateAllRanks();
+
+    logger.info(`[DB] ✓ Rankings updated for ${results.length} players`);
     return true;
   } catch (error) {
-    logger.error("Error updating ranking:", error);
+    logger.error(`[DB] Error updating rankings:`, error);
     return false;
   }
 }
 
 async function deleteRoom(data) {
   try {
+    logger.info(`[DB] Deleting room: ${data.roomId}`);
+
     await prisma.room.update({
       where: { id: data.roomId },
       data: { status: "CLOSED" },
     });
+
+    logger.info(`[DB] ✓ Room deleted: ${data.roomId}`);
     return true;
   } catch (error) {
-    logger.error("Error deleting room:", error);
+    logger.error(`[DB] Error deleting room:`, error);
     return false;
   }
 }
 
 async function saveGameHistory(data) {
   try {
-    await prisma.gameHistory.create({ data });
+    logger.info(`[DB] Saving game history: ${data.gameEngineId}`);
+
+    // Verificar si ya existe
+    const existing = await prisma.gameHistory.findFirst({
+      where: { gameEngineId: data.gameEngineId },
+    });
+
+    if (existing) {
+      logger.info(
+        `[DB] Game history ${data.gameEngineId} already exists. Skipping.`
+      );
+      return true;
+    }
+
+    await prisma.gameHistory.create({
+      data: {
+        ...data,
+        startedAt: new Date(data.startedAt),
+        finishedAt: data.finishedAt ? new Date(data.finishedAt) : null,
+      },
+    });
+
+    logger.info(`[DB] ✓ Game history saved: ${data.gameEngineId}`);
     return true;
   } catch (error) {
-    logger.error("Error saving game history:", error);
+    logger.error(`[DB] Error saving game history:`, error);
     return false;
   }
 }
 
-/**
- * Handlers de eventos de juego
- */
+async function updateAllRanks() {
+  try {
+    const allRankings = await prisma.playerRanking.findMany({
+      orderBy: [{ totalProfit: "desc" }, { winRate: "desc" }],
+    });
+
+    for (let i = 0; i < allRankings.length; i++) {
+      await prisma.playerRanking.update({
+        where: { userId: allRankings[i].userId },
+        data: { rank: i + 1 },
+      });
+    }
+
+    logger.info(`[DB] All ranks updated (${allRankings.length} players)`);
+  } catch (error) {
+    logger.error("[DB] Error updating ranks:", error);
+  }
+}
+
+// ========================================
+// HANDLERS DE EVENTOS
+// ========================================
 
 async function handleRoundCompleted(data) {
-  const { roomId, roundNumber, results } = data;
-
-  // Actualizar ranking de jugadores
-  for (const result of results) {
-    const { userId, username, result: outcome, payout } = result;
-
-    try {
-      const ranking = await prisma.playerRanking.findUnique({
-        where: { userId },
-      });
-
-      const gamesWon = ranking?.gamesWon || 0;
-      const gamesLost = ranking?.gamesLost || 0;
-      const totalGames = ranking?.totalGames || 0;
-      const totalProfit = ranking?.totalProfit || 0;
-
-      await prisma.playerRanking.upsert({
-        where: { userId },
-        update: {
-          totalGames: totalGames + 1,
-          gamesWon: outcome === "win" ? gamesWon + 1 : gamesWon,
-          gamesLost: outcome === "lose" ? gamesLost + 1 : gamesLost,
-          totalProfit: totalProfit + (payout || 0),
-          winRate:
-            outcome === "win"
-              ? (gamesWon + 1) / (totalGames + 1)
-              : gamesWon / (totalGames + 1),
-          lastPlayed: new Date(),
-        },
-        create: {
-          userId,
-          username,
-          totalGames: 1,
-          gamesWon: outcome === "win" ? 1 : 0,
-          gamesLost: outcome === "lose" ? 1 : 0,
-          totalProfit: payout || 0,
-          winRate: outcome === "win" ? 1 : 0,
-        },
-      });
-    } catch (error) {
-      logger.error(`Error updating ranking for user ${userId}:`, error);
-    }
-  }
-
-  logger.info(`Processed round ${roundNumber} for room ${roomId}`);
+  logger.info(
+    `[EVENT] Round ${data.roundNumber} completed in room ${data.roomId}`
+  );
+  // Eventos ya se procesan en game-engine, aquí solo para logs
 }
 
 async function handlePlayerBusted(data) {
-  logger.info("Player busted event:", data);
+  logger.info(`[EVENT] Player busted:`, data);
 }
 
 async function handleRoomClosed(data) {
-  const { roomId } = data;
+  logger.info(`[EVENT] Room closed: ${data.roomId}`);
 
-  try {
-    await prisma.room.update({
-      where: { id: roomId },
-      data: { status: "CLOSED" },
-    });
-  } catch (error) {
-    logger.error("Error closing room:", error);
+  if (await isDatabaseHealthy()) {
+    try {
+      await prisma.room.update({
+        where: { id: data.roomId },
+        data: { status: "CLOSED" },
+      });
+    } catch (error) {
+      logger.error("[EVENT] Error closing room:", error);
+    }
   }
 }
 
-/**
- * Inicialización
- */
+// ========================================
+// INICIALIZACIÓN
+// ========================================
+
 async function bootstrap() {
   try {
+    logger.info("Starting Worker Consumer...");
+
     // Conectar a PostgreSQL
     await prisma.$connect();
     logger.info("Connected to PostgreSQL");
+
+    // Verificar salud de BD
+    const dbHealthy = await isDatabaseHealthy();
+    logger.info(`Database health: ${dbHealthy ? "healthy" : "degraded"}`);
 
     // Conectar a RabbitMQ e iniciar consumidores
     await connectRabbitMQ();
 
     logger.info("Worker Consumer started successfully");
+    logger.info("Waiting for messages...");
   } catch (error) {
     logger.error("Failed to start Worker Consumer:", error);
     process.exit(1);
@@ -348,6 +468,7 @@ async function bootstrap() {
 // Manejo de señales de terminación
 process.on("SIGINT", async () => {
   logger.info("Shutting down gracefully...");
+  isProcessing = false;
   if (channel) await channel.close();
   if (connection) await connection.close();
   await prisma.$disconnect();
@@ -356,6 +477,7 @@ process.on("SIGINT", async () => {
 
 process.on("SIGTERM", async () => {
   logger.info("Shutting down gracefully...");
+  isProcessing = false;
   if (channel) await channel.close();
   if (connection) await connection.close();
   await prisma.$disconnect();

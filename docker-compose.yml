@@ -1,21 +1,15 @@
-version: "3.8"
-
 services:
-  # PostgreSQL - Base de datos principal
-  postgres:
+  postgres-main:
     image: postgres:16-alpine
-    container_name: blackjack-postgres
+    container_name: blackjack-postgres-main
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: blackjack_main
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-postgres.sh:/docker-entrypoint-initdb.d/init.sh
+      - postgres_main_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -23,17 +17,19 @@ services:
       retries: 5
     networks:
       - blackjack-network
+    # Para simular caídas fácilmente:
+    # docker-compose stop postgres-main
+    # docker-compose start postgres-main
 
-  # RabbitMQ - Cola de mensajes
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: blackjack-rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-admin123}
     ports:
-      - "${RABBITMQ_PORT}:5672"
-      - "${RABBITMQ_MGMT_PORT}:15672"
+      - "5672:5672"
+      - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -44,134 +40,32 @@ services:
     networks:
       - blackjack-network
 
-  # API Login - Servicio de autenticación
-  api-login:
-    build:
-      context: ./api-login-distribuidos
-      dockerfile: Dockerfile
-    container_name: blackjack-api-login
-    environment:
-      NODE_ENV: ${NODE_ENV}
-      PORT: 3000
-    ports:
-      - "${API_LOGIN_PORT}:3000"
-    networks:
-      - blackjack-network
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # Main App - Aplicación principal
-  main-app:
-    build:
-      context: ./main-app
-      dockerfile: Dockerfile
-    container_name: blackjack-main-app
-    environment:
-      NODE_ENV: ${NODE_ENV}
-      PORT: 3001
-    ports:
-      - "${MAIN_APP_PORT}:3001"
-    networks:
-      - blackjack-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      api-login:
-        condition: service_started
-    command: sh -c "npm run prisma:deploy || true && npm start"
-    restart: unless-stopped
-
-  # Game Engine - Motor de juego
-  game-engine:
-    build:
-      context: ./game-engine
-      dockerfile: Dockerfile
-    container_name: blackjack-game-engine
-    environment:
-      NODE_ENV: ${NODE_ENV}
-      PORT: 3002
-    ports:
-      - "${GAME_ENGINE_PORT}:3002"
-    networks:
-      - blackjack-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      api-login:
-        condition: service_started
-    command: sh -c "npm run prisma:deploy || true && npm start"
-    restart: unless-stopped
-
-  # Worker Consumer - Procesador de mensajes
-  worker-consumer:
-    build:
-      context: ./worker-consumer
-      dockerfile: Dockerfile
-    container_name: blackjack-worker-consumer
-    environment:
-      NODE_ENV: ${NODE_ENV}
-      METRICS_PORT: 3003
-    ports:
-      - "3003:3003"
-    networks:
-      - blackjack-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # Frontend - Aplicación web
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: blackjack-frontend
-    ports:
-      - "${FRONTEND_PORT}:80"
-    networks:
-      - blackjack-network
-    depends_on:
-      - api-login
-      - main-app
-      - game-engine
-    restart: unless-stopped
-
-  # Prometheus - Recopilador de métricas
+  # ============================================
+  # MONITOREO
+  # ============================================
   prometheus:
     image: prom/prometheus:latest
     container_name: blackjack-prometheus
     ports:
-      - "${PROMETHEUS_PORT}:9090"
+      - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
     networks:
       - blackjack-network
     restart: unless-stopped
 
-  # Grafana - Visualización de métricas
   grafana:
     image: grafana/grafana:latest
     container_name: blackjack-grafana
     ports:
-      - "${GRAFANA_PORT}:3000"
+      - "3010:3000"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
-      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
@@ -186,7 +80,7 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
+  postgres_main_data:
   rabbitmq_data:
   prometheus_data:
   grafana_data:
