@@ -24,8 +24,6 @@ router.post("/rooms", async (req, res) => {
       .toString(36)
       .substr(2, 9)}`;
 
-    console.log(req.body);
-
     gameManager.registerRoom({
       roomId,
       name: name || `Room ${roomId.slice(0, 8)}`,
@@ -100,13 +98,13 @@ router.get("/rooms/:roomId", (req, res) => {
     const { roomId } = req.params;
     const game = gameManager.getGame(roomId);
 
-    if (!game) {
+    const config = gameManager.roomConfigs.get(roomId);
+
+    if (!game && !config) {
       return res.status(404).json({
         error: "Room not found",
       });
     }
-
-    const config = gameManager.roomConfigs.get(roomId);
 
     res.json({
       id: roomId,
@@ -116,9 +114,9 @@ router.get("/rooms/:roomId", (req, res) => {
       maxPlayers: config?.maxPlayers || 5,
       minBet: config?.minBet || 10,
       maxBet: config?.maxBet || 1000,
-      status: game.getStatus(),
-      playerCount: game.getPlayerCount(),
-      currentRound: game.getCurrentRound(),
+      status: (game && game.getStatus()) || "WAITING",
+      playerCount: (game && game.getPlayerCount()) || 0,
+      currentRound: (game && game.getCurrentRound()) || 1,
       createdBy: config?.createdBy || "unknown",
     });
   } catch (error) {

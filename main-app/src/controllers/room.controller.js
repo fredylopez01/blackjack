@@ -151,7 +151,7 @@ export async function createRoom(req, res) {
  */
 export async function listRooms(req, res) {
   try {
-    const { status, isPublic } = req.query;
+    const { isPublic } = req.query;
 
     // Verificar si la BD está disponible
     if (!isDatabaseHealthy()) {
@@ -176,7 +176,6 @@ export async function listRooms(req, res) {
 
     // Base de datos disponible: consultar normalmente
     const where = {};
-    if (status) where.status = status;
     if (isPublic !== undefined) where.isPublic = isPublic === "true";
 
     const rooms = await prisma.room.findMany({

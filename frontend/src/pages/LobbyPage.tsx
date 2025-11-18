@@ -16,18 +16,7 @@ import {
 } from "lucide-react";
 import { EnterPasswordModal } from "./EnterPassword";
 import Navigation from "../components/Navigation";
-
-interface Room {
-  id: string;
-  name: string;
-  isPublic: boolean;
-  maxPlayers: number;
-  minBet: number;
-  maxBet: number;
-  status: string;
-  createdAt: string;
-  createdBy: string;
-}
+import { Room } from "../interfaces/Room";
 
 export default function LobbyPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -238,6 +227,8 @@ export default function LobbyPage() {
                   <button
                     className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() =>
+                      room.id &&
+                      room.createdBy &&
                       handleJoinRoom(room.id, room.isPublic, room.createdBy)
                     }
                     disabled={connecting}

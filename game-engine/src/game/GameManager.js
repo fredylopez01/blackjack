@@ -143,7 +143,7 @@ export class GameManager {
         isPublic: config?.isPublic !== false,
         createdBy: config?.createdBy,
         playerCount: game.getPlayerCount(),
-        status: game.getStatus(),
+        status: "waiting",
         currentRound: game.getCurrentRound(),
       });
       addedRooms.add(roomId);
@@ -154,11 +154,11 @@ export class GameManager {
       if (!addedRooms.has(roomId)) {
         rooms.push({
           roomId,
-          name: config.name || `Room ${roomId.slice(0, 8)}`,
-          maxPlayers: config.maxPlayers || 6,
-          minBet: config.minBet || 10,
-          maxBet: config.maxBet || 1000,
-          isPublic: config.isPublic !== false,
+          name: config.name,
+          maxPlayers: config.maxPlayers,
+          minBet: config.minBet,
+          maxBet: config.maxBet,
+          isPublic: config.isPublic,
           createdBy: config.createdBy,
           playerCount: 0,
           status: "waiting",

@@ -58,11 +58,11 @@
     "role": "admin",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-18T14:18:27.649Z",
+    "lastLogin": "2025-11-18T21:18:54.442Z",
     "createdAt": "2025-09-08T02:06:42.022Z",
-    "updatedAt": "2025-11-18T14:35:39.285Z",
+    "updatedAt": "2025-11-18T22:05:03.292Z",
     "lockUntil": null,
-    "balance": 1055
+    "balance": 1085
   },
   {
     "id": "703abdbe-06d0-4a4c-bcf7-3be2bb02393c",
@@ -78,28 +78,15 @@
     "balance": 1000
   },
   {
-    "id": "cd3ef16c-a38d-447f-9f4c-802ce6df7bfc",
-    "email": "fl8333317@gmail.com",
-    "password": "$2b$10$rb.h7IaPcREePKyGx1ee5ucIq0YEq1Gb3Ec3xZxeWSSvOsNZ3iB2W",
-    "role": "admin",
-    "isActive": true,
-    "loginAttempts": 0,
-    "lastLogin": "2025-11-15T04:56:27.194Z",
-    "createdAt": "2025-09-08T21:03:53.543Z",
-    "updatedAt": "2025-11-15T04:56:27.194Z",
-    "lockUntil": null,
-    "balance": 930
-  },
-  {
     "id": "bd2fff72-ce53-4402-ab6a-3eccab4d7d24",
     "email": "daniel.bermudez@uptc.edu.co",
     "password": "$2b$10$kxyQxOI6NXQIuz1bAD9ikekmRRDHXwQwON2HRCLhY.SeXd8S/T7K6",
     "role": "user",
     "isActive": true,
     "loginAttempts": 0,
-    "lastLogin": "2025-11-18T15:16:49.458Z",
+    "lastLogin": "2025-11-18T21:19:11.518Z",
     "createdAt": "2025-09-12T23:18:39.048Z",
-    "updatedAt": "2025-11-18T15:16:49.458Z",
+    "updatedAt": "2025-11-18T22:05:03.305Z",
     "lockUntil": null,
     "balance": 1070
   },
@@ -139,6 +126,19 @@
     "lastLogin": "2025-11-12T22:00:56.573Z",
     "createdAt": "2025-11-12T22:00:54.420Z",
     "updatedAt": "2025-11-12T22:00:56.573Z",
+    "lockUntil": null,
+    "balance": 1000
+  },
+  {
+    "id": "a8067cea-4a10-4943-b1b1-69a26c2fcc62",
+    "email": "fl8333317@gmail.com",
+    "password": "$2b$10$Dj5FQW5SOFF7Q3TDgd81X.GUW2QCjMazCmRrT44krP3jSJwSK./OO",
+    "role": "user",
+    "isActive": true,
+    "loginAttempts": 0,
+    "lastLogin": "2025-11-18T22:24:20.606Z",
+    "createdAt": "2025-11-18T22:21:39.466Z",
+    "updatedAt": "2025-11-18T22:24:20.606Z",
     "lockUntil": null,
     "balance": 1000
   }
