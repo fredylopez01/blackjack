@@ -1,0 +1,47 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'blackjack-monitor'
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # PostgreSQL
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    metrics_path: '/metrics'
+
+  # RabbitMQ
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq:15672']
+    metrics_path: '/api/metrics'
+
+  # API Login
+  - job_name: 'api-login'
+    static_configs:
+      - targets: ['api-login:3000']
+    metrics_path: '/metrics'
+
+  # Main App
+  - job_name: 'main-app'
+    static_configs:
+      - targets: ['main-app:3001']
+    metrics_path: '/metrics'
+
+  # Game Engine
+  - job_name: 'game-engine'
+    static_configs:
+      - targets: ['game-engine:3002']
+    metrics_path: '/metrics'
+
+  # Worker Consumer
+  - job_name: 'worker-consumer'
+    static_configs:
+      - targets: ['worker-consumer:3003']
+    metrics_path: '/metrics'
