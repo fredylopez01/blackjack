@@ -7,6 +7,7 @@ import {
   Target,
   Award,
   Zap,
+  AlertTriangle,
 } from "lucide-react";
 import { rankingAPI } from "../services/api";
 import toast from "react-hot-toast";
@@ -19,6 +20,7 @@ export default function RankingPage() {
   const [myStats, setMyStats] = useState<PlayerStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isDegraded, setIsDegraded] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -29,11 +31,27 @@ export default function RankingPage() {
       setLoading(true);
       const globalRes = await rankingAPI.getGlobal(30);
       setPlayers(globalRes.rankings || []);
-      const myRes = await rankingAPI.getMyStats();
-      setMyStats(myRes || null);
+
+      if (globalRes.mode === "degraded") {
+        setIsDegraded(true);
+        toast.loading("Modo degradado: datos del sistema de backup", {
+          duration: 3000,
+        });
+      } else {
+        setIsDegraded(false);
+      }
+
+      try {
+        const myRes = await rankingAPI.getMyStats();
+        setMyStats(myRes || null);
+      } catch (error) {
+        if (error instanceof AxiosError && error.status === 404) {
+          setMyStats(null);
+        }
+      }
     } catch (error) {
-      if (error instanceof AxiosError && error.status === 404) {
-        setMyStats(null);
+      if (error instanceof AxiosError && error.status === 503) {
+        toast.error("Servicio no disponible. Intenta más tarde.");
       } else {
         toast.error("Error cargando ranking");
       }
@@ -42,7 +60,6 @@ export default function RankingPage() {
       setLoading(false);
     }
   };
-
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadData();
@@ -73,6 +90,23 @@ export default function RankingPage() {
 
       <div className="p-4 md:p-8 mt-16 md:mt-0">
         <div className="max-w-6xl mx-auto">
+          {/* Degraded Mode Alert */}
+          {isDegraded && (
+            <div className="mb-6 p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg flex items-start gap-3">
+              <AlertTriangle
+                className="text-yellow-400 flex-shrink-0 mt-0.5"
+                size={20}
+              />
+              <div>
+                <p className="font-semibold text-yellow-300">Modo Degradado</p>
+                <p className="text-sm text-yellow-200 mt-1">
+                  Rankings calculados desde game-engine. Algunos datos pueden
+                  ser parciales.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-2">
