@@ -8,6 +8,8 @@ declare global {
 
 const PUBLIC_KEY = import.meta.env.VITE_EPAYCO_PUBLIC_KEY;
 const USD_RATE = Number(import.meta.env.VITE_USD_RATE || "4000");
+const RESPONSE_URL_ENV = (import.meta as any).env.VITE_EPAYCO_RESPONSE_URL;
+const CONFIRMATION_URL_ENV = (import.meta as any).env.VITE_EPAYCO_CONFIRMATION_URL;
 
 interface OpenCheckoutParams {
   copAmount: number;
@@ -34,6 +36,13 @@ export async function openCheckout({
 
   const usdAmount = (copAmount / USD_RATE).toFixed(2);
 
+  const frontendOrigin = window.location.origin;
+  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+  const responseUrl = RESPONSE_URL_ENV || `${frontendOrigin}/profile/payments/epayco/landing`;
+  const confirmationUrl =
+    CONFIRMATION_URL_ENV || `${apiBase}/api/payments/epayco/confirmation`;
+
   const handler = window.ePayco.checkout.configure({
     key: PUBLIC_KEY,
     test: true,
@@ -49,9 +58,9 @@ export async function openCheckout({
     country: "CO",
     external: false,
     // response: redirige a nuestra página landing que procesa el pago
-    response: `${window.location.origin}/profile/payments/epayco/landing`,
+    response: responseUrl,
     // confirmation: webhook para que ePayco notifique al backend
-    confirmation: `${window.location.origin.replace("localhost:5173", "localhost:3000")}/api/payments/epayco/confirmation`,
+    confirmation: confirmationUrl,
     invoice: `BJ-${Date.now()}`,
     tax: "0",
     tax_base: usdAmount,

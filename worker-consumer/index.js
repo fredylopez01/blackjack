@@ -41,6 +41,10 @@ async function connectRabbitMQ() {
     connection = await amqp.connect(RABBITMQ_URL);
     channel = await connection.createChannel();
 
+    // Asegurar que las colas necesarias existan
+    await channel.assertQueue(QUEUES.PENDING_WRITES, { durable: true });
+    await channel.assertQueue(QUEUES.GAME_EVENTS, { durable: true });
+
     // Configurar prefetch
     await channel.prefetch(1);
 

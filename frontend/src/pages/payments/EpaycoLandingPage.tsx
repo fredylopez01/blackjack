@@ -30,55 +30,33 @@ export default function EpaycoLandingPage() {
         // Esperar un poco a que ePayco procese
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Consultar el estado del pago en ePayco a través del backend
-        console.log("Querying backend for reference:", reference);
-        setDebugInfo(`Consultando backend para: ${reference}`);
+        // Consultar el estado del pago en nuestro backend (actualizado por el webhook)
+        console.log("Querying backend status for reference:", reference);
+        setDebugInfo(`Consultando estado para: ${reference}`);
 
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/payments/epayco/query/${reference}`
+          `${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/payments/epayco/status/${reference}`
         );
 
-        console.log("Backend response status:", response.status);
+        console.log("Backend status response:", response.status);
         const data = await response.json();
-        console.log("Backend response data:", data);
-        setDebugInfo(`Respuesta backend: ${JSON.stringify(data).substring(0, 100)}`);
+        console.log("Backend status data:", data);
+        setDebugInfo(`Estado backend: ${JSON.stringify(data).substring(0, 120)}`);
 
-        if (data.success && data.transaction) {
-          const transaction = data.transaction;
-          console.log("Transaction found:", transaction);
-          
-          // Verificar el pago y actualizar balance
-          const verifyResponse = await fetch(
-            `${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/payments/epayco/verify`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                reference,
-                userId: transaction.x_cust_id_cliente,
-                amount: transaction.x_amount,
-              }),
-            }
-          );
-
-          const verifyData = await verifyResponse.json();
-          console.log("Verify response:", verifyData);
-          setDebugInfo(`Verificación: ${verifyData.message}`);
-
-          if (verifyData.success) {
+        if (data.success && data.data) {
+          const payment = data.data as any;
+          if (payment.approved) {
             toast.success("¡Pago confirmado y balance actualizado!");
             setTimeout(() => {
               navigate("/profile", { state: { refreshProfile: true } });
             }, 1500);
           } else {
-            toast.error("Pago verificado pero no se pudo actualizar el balance");
+            toast.error("Pago no aprobado");
             setTimeout(() => navigate("/profile"), 2000);
           }
         } else {
-          console.error("Transaction not found:", data);
-          setDebugInfo("Error: Transacción no encontrada");
+          console.error("Payment status not found:", data);
+          setDebugInfo("Error: Estado de pago no encontrado");
           toast.error("No se pudo obtener el estado del pago");
           setTimeout(() => navigate("/profile"), 2000);
         }

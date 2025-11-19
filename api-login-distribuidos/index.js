@@ -8,6 +8,7 @@ const rateLimit = require("express-rate-limit");
 const swaggerUi = require("swagger-ui-express");
 const swaggerFile = require("./docs/swagger-output.json");
 const path = require("path");
+const client = require("prom-client");
 
 // Importar rutas
 const authRoutes = require("./src/routes/auth");
@@ -25,6 +26,10 @@ const { verifyToken } = require("./src/middleware/auth");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Prometheus metrics registry
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
 
 // Configuración de seguridad
 app.use(
@@ -77,6 +82,17 @@ app.get("/", (req, res) => {
       },
     },
   });
+});
+
+// Prometheus metrics endpoint
+app.get("/metrics", async (req, res) => {
+  try {
+    res.set("Content-Type", register.contentType);
+    res.end(await register.metrics());
+  } catch (error) {
+    console.error("Error generating metrics:", error);
+    res.status(500).end();
+  }
 });
 
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));

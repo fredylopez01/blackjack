@@ -123,29 +123,19 @@ const confirmEpaycoPayment = async (req, res) => {
 
 // Almacenar pagos confirmados en memoria (en producción usar DB)
 const confirmedPayments = new Map();
-const processedPayments = new Set();
 
 const verifyPaymentWithEpayco = async (req, res) => {
   try {
-    const { reference, userId, amount } = req.body;
-    
-    if (!reference || !userId || !amount) {
+    const { reference } = req.body;
+
+    if (!reference) {
       return res.status(400).json({
-        message: "Referencia, userId y monto son requeridos",
+        message: "Referencia es requerida",
         success: false,
       });
     }
 
-    // Evitar procesar el mismo pago dos veces
-    if (processedPayments.has(reference)) {
-      return res.status(200).json({
-        message: "Pago ya fue procesado",
-        success: true,
-        alreadyProcessed: true,
-      });
-    }
-
-    // Consultar estado en ePayco
+    // Consultar estado en ePayco sin modificar el balance local
     try {
       const epaycoResponse = await axios.get(
         `https://secure.epayco.co/api/transaction/query/reference_payco/${reference}`,
@@ -159,7 +149,7 @@ const verifyPaymentWithEpayco = async (req, res) => {
       console.log("ePayco response:", JSON.stringify(epaycoResponse.data, null, 2));
 
       const transaction = epaycoResponse.data?.data?.[0];
-      
+
       if (!transaction) {
         return res.status(404).json({
           message: "Transacción no encontrada en ePayco",
@@ -167,56 +157,15 @@ const verifyPaymentWithEpayco = async (req, res) => {
         });
       }
 
-      // Verificar si el pago fue aprobado (estado 1)
-      if (transaction.x_transaction_state !== "1" && transaction.x_transaction_state !== 1) {
-        return res.status(200).json({
-          message: "Pago no aprobado",
-          success: false,
-          transactionState: transaction.x_transaction_state,
-        });
-      }
-
-      // Buscar usuario
-      const user = await User.findById(userId);
-      if (!user) {
-        return res.status(404).json({
-          message: "Usuario no encontrado",
-          success: false,
-        });
-      }
-
-      // Actualizar balance
-      const amountToAdd = Number(amount) || 0;
-      if (amountToAdd <= 0) {
-        return res.status(400).json({
-          message: "Monto inválido",
-          success: false,
-        });
-      }
-
-      const newBalance = (user.balance || 0) + amountToAdd;
-      await User.update(userId, { balance: newBalance });
-
-      // Registrar acción
-      await logUserAction(
-        "PAYMENT_VERIFIED",
-        userId,
-        `Pago ePayco verificado: ${amountToAdd} USD, Ref: ${reference}`
-      );
-
-      // Marcar como procesado
-      processedPayments.add(reference);
-      setTimeout(() => processedPayments.delete(reference), 60 * 60 * 1000); // Limpiar después de 1 hora
+      const approved =
+        transaction.x_transaction_state === "1" ||
+        transaction.x_transaction_state === 1;
 
       return res.status(200).json({
-        message: "Pago verificado y balance actualizado",
+        message: "Estado de pago obtenido desde ePayco",
         success: true,
-        data: {
-          userId,
-          newBalance,
-          amountAdded: amountToAdd,
-          reference,
-        },
+        approved,
+        transaction,
       });
     } catch (epaycoError) {
       console.error("Error consultando ePayco:", epaycoError.message);
@@ -283,21 +232,31 @@ const getPaymentStatus = async (req, res) => {
 const originalConfirmEpaycoPayment = confirmEpaycoPayment;
 const confirmEpaycoPaymentWithCache = async (req, res) => {
   const result = await originalConfirmEpaycoPayment(req, res);
-  
+
   // Si fue exitoso, guardar en cache
   if (res.statusCode === 200 && req.body.x_ref_payco) {
+    const transactionState = req.body.x_transaction_state;
+    const approved =
+      transactionState === "1" || transactionState === 1;
+
     confirmedPayments.set(req.body.x_ref_payco, {
-      userId: req.body.x_cust_id_cliente || req.body.x_customer || req.body.customer,
+      userId:
+        req.body.x_cust_id_cliente ||
+        req.body.x_customer ||
+        req.body.customer,
       amount: req.body.x_amount,
+      currency: req.body.x_currency_code,
+      transactionState,
+      approved,
       timestamp: Date.now(),
     });
-    
+
     // Limpiar después de 10 minutos
     setTimeout(() => {
       confirmedPayments.delete(req.body.x_ref_payco);
     }, 10 * 60 * 1000);
   }
-  
+
   return result;
 };
 

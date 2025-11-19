@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from "react";
+import { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navigation from "../../components/Navigation";
 import { CheckCircle, XCircle, Clock } from "lucide-react";
@@ -7,7 +7,6 @@ import toast from "react-hot-toast";
 export default function EpaycoResponsePage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isProcessing, setIsProcessing] = useState(false);
 
   const { status, title, message, amount, currency, reference, userId } = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -43,57 +42,8 @@ export default function EpaycoResponsePage() {
       ? "text-red-400"
       : "text-yellow-400";
 
-  useEffect(() => {
-    if (status === "success" && reference && userId && !isProcessing) {
-      const verifyPayment = async () => {
-        setIsProcessing(true);
-        try {
-          const response = await fetch(
-            `${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/payments/epayco/verify`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                reference,
-                userId,
-                amount,
-              }),
-            }
-          );
-
-          const data = await response.json();
-          
-          if (data.success) {
-            toast.success("¡Pago confirmado y balance actualizado!");
-            // Esperar un poco antes de redirigir
-            setTimeout(() => {
-              navigate("/profile", { state: { refreshProfile: true } });
-            }, 1500);
-          } else {
-            toast.error("Error verificando el pago");
-            setTimeout(() => {
-              navigate("/profile");
-            }, 2000);
-          }
-        } catch (error) {
-          console.error("Error verifying payment:", error);
-          toast.error("Error al verificar el pago");
-          setTimeout(() => {
-            navigate("/profile");
-          }, 2000);
-        }
-      };
-
-      verifyPayment();
-    } else if (status === "failed") {
-      const timer = setTimeout(() => {
-        navigate("/profile");
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [status, reference, userId, navigate, isProcessing, amount]);
+  // Esta página solo muestra el resultado que ePayco envía por querystring.
+  // El balance del usuario se actualiza exclusivamente mediante el webhook de confirmación.
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-green-900 to-gray-900">

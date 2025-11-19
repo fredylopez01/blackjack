@@ -5,6 +5,8 @@ let connection = null;
 let channel = null;
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL;
+const RABBITMQ_RETRY_ATTEMPTS = parseInt(process.env.RABBITMQ_RETRY_ATTEMPTS || "10", 10);
+const RABBITMQ_RETRY_DELAY = parseInt(process.env.RABBITMQ_RETRY_DELAY || "5000", 10);
 
 // Nombres de colas y exchanges
 export const QUEUES = {
@@ -21,9 +23,14 @@ export const EXCHANGES = {
  * Configura la conexión a RabbitMQ y crea las colas necesarias
  */
 export async function setupRabbitMQ() {
-  try {
-    connection = await amqp.connect(RABBITMQ_URL);
-    channel = await connection.createChannel();
+  let attempt = 0;
+
+  while (true) {
+    try {
+      attempt += 1;
+
+      connection = await amqp.connect(RABBITMQ_URL);
+      channel = await connection.createChannel();
 
     // Configurar Dead Letter Queue
     await channel.assertQueue(QUEUES.DEAD_LETTER, { durable: true });
@@ -49,20 +56,33 @@ export async function setupRabbitMQ() {
       "game.*"
     );
 
-    logger.info("RabbitMQ queues and exchanges configured");
+      logger.info(
+        `RabbitMQ queues and exchanges configured (attempt ${attempt})`
+      );
 
-    // Manejo de errores de conexión
-    connection.on("error", (err) => {
-      logger.error("RabbitMQ connection error:", err);
-    });
+      // Manejo de errores de conexión
+      connection.on("error", (err) => {
+        logger.error("RabbitMQ connection error:", err);
+      });
 
-    connection.on("close", () => {
-      logger.warn("RabbitMQ connection closed. Attempting to reconnect...");
-      setTimeout(setupRabbitMQ, 5000);
-    });
-  } catch (error) {
-    logger.error("Failed to setup RabbitMQ:", error);
-    throw error;
+      connection.on("close", () => {
+        logger.warn("RabbitMQ connection closed. Attempting to reconnect...");
+        setTimeout(setupRabbitMQ, 5000);
+      });
+
+      return;
+    } catch (error) {
+      logger.error(
+        `Failed to setup RabbitMQ (attempt ${attempt}/${RABBITMQ_RETRY_ATTEMPTS}):`,
+        error
+      );
+
+      if (attempt >= RABBITMQ_RETRY_ATTEMPTS) {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, RABBITMQ_RETRY_DELAY));
+    }
   }
 }
 

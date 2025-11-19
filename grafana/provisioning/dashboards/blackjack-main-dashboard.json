@@ -116,7 +116,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "continuous-RdYlGn"},
+          "color": {"mode": "continuous-RdYlGr"},
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -244,7 +244,7 @@
       "id": 6,
       "datasource": null,
       "gridPos": {"h": 7, "w": 12, "x": 12, "y": 13},
-      "fieldConfig": {"defaults": {"color": {"mode": "none"}}, "overrides": []},
+      "fieldConfig": {"defaults": {"color": {"mode": "fixed"}}, "overrides": []},
       "options": {"showHeader": true},
       "targets": [
         {
