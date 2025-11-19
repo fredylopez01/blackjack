@@ -4,6 +4,7 @@ import helmet from "helmet";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import { logger } from "./utils/logger.js";
+import client from "prom-client";
 import { setupRabbitMQ } from "./services/rabbitmq.service.js";
 import { healthCheckMiddleware } from "./middleware/healthCheck.middleware.js";
 import { errorHandler } from "./middleware/error.middleware.js";
@@ -18,6 +19,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Prometheus metrics registry
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
 // Prisma Client
 export const prisma = new PrismaClient();
 
@@ -25,7 +30,7 @@ export const prisma = new PrismaClient();
 app.use(helmet());
 app.use(
   cors({
-    origin: [
+    origin: [ 
       "http://jack21.ddns.net",
       "http://206.189.76.177",
       "http://localhost:5173",
@@ -54,6 +59,17 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
     dbStatus: res.locals.dbStatus || "unknown",
   });
+});
+
+// Prometheus metrics endpoint
+app.get("/metrics", async (req, res) => {
+  try {
+    res.set("Content-Type", register.contentType);
+    res.end(await register.metrics());
+  } catch (error) {
+    logger.error("Error generating metrics:", error);
+    res.status(500).end();
+  }
 });
 
 app.use("/api/rooms", roomRoutes);

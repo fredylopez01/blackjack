@@ -1,0 +1,315 @@
+{
+  "id": null,
+  "uid": "blackjack-services",
+  "title": "Blackjack - Servicios Críticos",
+  "tags": ["blackjack", "services", "production"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"],
+    "time_options": ["1h", "3h", "6h", "12h", "24h"]
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Estado global de servicios",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "panels": []
+    },
+    {
+      "type": "gauge",
+      "title": "API Login",
+      "id": 1,
+      "datasource": null,
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {"mode": "continuous-RdYlGr"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 0.5},
+              {"color": "green", "value": 0.99}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg_over_time(up{job=\"api-login\"}[5m])",
+          "legendFormat": "API Login"
+        }
+      ]
+    },
+    {
+      "type": "gauge",
+      "title": "Main App",
+      "id": 2,
+      "datasource": null,
+      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {"mode": "continuous-RdYlGr"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 0.5},
+              {"color": "green", "value": 0.99}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg_over_time(up{job=\"main-app\"}[5m])",
+          "legendFormat": "Main App"
+        }
+      ]
+    },
+    {
+      "type": "gauge",
+      "title": "Game Engine",
+      "id": 3,
+      "datasource": null,
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {"mode": "continuous-RdYlGr"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 0.5},
+              {"color": "green", "value": 0.99}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg_over_time(up{job=\"game-engine\"}[5m])",
+          "legendFormat": "Game Engine"
+        }
+      ]
+    },
+    {
+      "type": "gauge",
+      "title": "Worker Consumer",
+      "id": 4,
+      "datasource": null,
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {"mode": "continuous-RdYlGr"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 0.5},
+              {"color": "green", "value": 0.99}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg_over_time(up{job=\"worker-consumer\"}[5m])",
+          "legendFormat": "Worker Consumer"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Histórico de disponibilidad",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 7},
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "UP por servicio",
+      "id": 5,
+      "datasource": null,
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "showPoints": "never"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "green", "value": 1}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom"},
+        "tooltip": {"mode": "multi", "sort": "none"}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=~\"api-login|main-app|game-engine|worker-consumer\"}",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Detalle técnico de scrape",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 16},
+      "panels": []
+    },
+    {
+      "type": "bargauge",
+      "title": "Duración de scrape (último valor)",
+      "id": 6,
+      "datasource": null,
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 17},
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {"mode": "continuous-YlRd"}
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "scrape_duration_seconds{job=~\"api-login|main-app|game-engine|worker-consumer\"}",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "Muestras scrapeadas (último valor)",
+      "id": 7,
+      "datasource": null,
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 17},
+      "options": {
+        "displayMode": "lcd",
+        "orientation": "horizontal",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {"mode": "continuous-BlPu"}
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "scrape_samples_scraped{job=~\"api-login|main-app|game-engine|worker-consumer\"}",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Resumen por servicio",
+      "id": 8,
+      "datasource": null,
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 23},
+      "fieldConfig": {"defaults": {"color": {"mode": "fixed"}}, "overrides": []},
+      "options": {"showHeader": true},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=~\"api-login|main-app|game-engine|worker-consumer\"}",
+          "legendFormat": "status",
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "expr": "scrape_duration_seconds{job=~\"api-login|main-app|game-engine|worker-consumer\"}",
+          "legendFormat": "duration",
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "expr": "scrape_samples_scraped{job=~\"api-login|main-app|game-engine|worker-consumer\"}",
+          "legendFormat": "samples",
+          "format": "table"
+        }
+      ]
+    }
+  ]
+}

@@ -16,11 +16,11 @@ scrape_configs:
       - targets: ['postgres:5432']
     metrics_path: '/metrics'
 
-  # RabbitMQ
+  # RabbitMQ (Prometheus plugin on 15692)
   - job_name: 'rabbitmq'
     static_configs:
-      - targets: ['rabbitmq:15672']
-    metrics_path: '/api/metrics'
+      - targets: ['rabbitmq:15692']
+    metrics_path: '/metrics'
 
   # API Login
   - job_name: 'api-login'
@@ -28,10 +28,10 @@ scrape_configs:
       - targets: ['api-login:3000']
     metrics_path: '/metrics'
 
-  # Main App
+  # Main App (3 replicas)
   - job_name: 'main-app'
     static_configs:
-      - targets: ['main-app:3001']
+      - targets: ['main-app-1:3001', 'main-app-2:3001', 'main-app-3:3001']
     metrics_path: '/metrics'
 
   # Game Engine
