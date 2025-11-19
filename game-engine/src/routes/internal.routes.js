@@ -278,7 +278,7 @@ router.get("/ranking/global", async (req, res) => {
     // Obtener todos los jugadores únicos con sus estadísticas
     const playerSessions = await prisma.playerSession.findMany({
       orderBy: {
-        updatedAt: "desc",
+        joinedAt: "desc",
       },
     });
 

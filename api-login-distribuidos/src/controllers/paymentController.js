@@ -248,6 +248,7 @@ const confirmEpaycoPaymentWithCache = async (req, res) => {
       currency: req.body.x_currency_code,
       transactionState,
       approved,
+      balanceUpdated: approved,
       timestamp: Date.now(),
     });
 
@@ -285,10 +286,13 @@ const queryEpaycoTransaction = async (req, res) => {
         }
       );
 
-      console.log("ePayco query response:", JSON.stringify(epaycoResponse.data, null, 2));
+      console.log(
+        "ePayco query response:",
+        JSON.stringify(epaycoResponse.data, null, 2)
+      );
 
       const transaction = epaycoResponse.data?.data?.[0];
-      
+
       if (!transaction) {
         return res.status(404).json({
           message: "Transacción no encontrada en ePayco",
@@ -296,28 +300,155 @@ const queryEpaycoTransaction = async (req, res) => {
         });
       }
 
+      const transactionState = transaction.x_transaction_state;
+      const approved =
+        transactionState === "1" || transactionState === 1;
+
+      const referencePayco = transaction.x_ref_payco || reference;
+
+      const userIdFromTransaction =
+        transaction.x_cust_id_cliente ||
+        transaction.x_customer ||
+        transaction.customer;
+
+      const userId =
+        userIdFromTransaction ||
+        req.query.userId ||
+        (req.user && req.user.id);
+
+      if (!approved) {
+        return res.status(200).json({
+          message: "Transacción encontrada (no aprobada)",
+          success: true,
+          approved: false,
+          transaction,
+        });
+      }
+
+      if (!userId) {
+        return res.status(400).json({
+          message: "Transacción aprobada pero sin usuario asociado",
+          success: false,
+          transaction,
+        });
+      }
+
+      const amountToAdd = Number(transaction.x_amount) || 0;
+      if (amountToAdd <= 0) {
+        return res.status(400).json({
+          message: "Monto de transacción inválido",
+          success: false,
+          transaction,
+        });
+      }
+
+      const user = await User.findById(userId);
+      if (!user) {
+        await writeErrorLog({
+          message: `EPAYCO-QUERY: Usuario no encontrado ${userId} para ref ${referencePayco}`,
+        });
+        return res.status(404).json({
+          message: "Usuario no encontrado",
+          success: false,
+          transaction,
+        });
+      }
+
+      const newBalance = (user.balance || 0) + amountToAdd;
+      const updatedUser = await User.update(userId, {
+        balance: newBalance,
+      });
+
+      await logUserAction(
+        "PAYMENT_RECEIVED_QUERY",
+        userId,
+        `Pago ePayco consultado y aplicado: ${amountToAdd} ${
+          transaction.x_currency_code || "USD"
+        }, Ref: ${referencePayco}`
+      );
+
+      confirmedPayments.set(referencePayco, {
+        userId,
+        amount: transaction.x_amount,
+        currency: transaction.x_currency_code,
+        transactionState,
+        approved,
+        balanceUpdated: true,
+        timestamp: Date.now(),
+      });
+
+      setTimeout(() => {
+        confirmedPayments.delete(referencePayco);
+      }, 10 * 60 * 1000);
+
       return res.status(200).json({
-        message: "Transacción encontrada",
+        message: "Transacción encontrada y balance actualizado",
         success: true,
+        approved: true,
         transaction,
+        newBalance,
+        user: updatedUser,
       });
     } catch (epaycoError) {
       console.error("ePayco API error:", epaycoError.message);
-      
+
       // En desarrollo, si ePayco falla, devolver una transacción simulada
       if (process.env.NODE_ENV === "development") {
         console.log("Development mode: returning simulated transaction");
+
+        const simulatedUserId =
+          req.query.userId || (req.user && req.user.id) || "dev-user";
+
+        const transaction = {
+          x_ref_payco: reference,
+          x_amount: "10.00",
+          x_currency_code: "USD",
+          x_transaction_state: "1",
+          x_response_reason_text: "Aprobado",
+          x_cust_id_cliente: simulatedUserId,
+        };
+
+        try {
+          const amountToAdd = Number(transaction.x_amount) || 0;
+
+          if (amountToAdd > 0 && simulatedUserId && simulatedUserId !== "dev-user") {
+            const user = await User.findById(simulatedUserId);
+
+            if (user) {
+              const newBalance = (user.balance || 0) + amountToAdd;
+              const updatedUser = await User.update(simulatedUserId, {
+                balance: newBalance,
+              });
+
+              await logUserAction(
+                "PAYMENT_RECEIVED_QUERY_DEV",
+                simulatedUserId,
+                `Pago simulado ePayco aplicado: ${amountToAdd} ${
+                  transaction.x_currency_code || "USD"
+                }, Ref: ${reference}`
+              );
+
+              return res.status(200).json({
+                message: "Transacción simulada (desarrollo) y balance actualizado",
+                success: true,
+                approved: true,
+                transaction,
+                newBalance,
+                user: updatedUser,
+              });
+            }
+          }
+        } catch (devError) {
+          await writeErrorLog({
+            message: `EPAYCO-QUERY-DEV: Error aplicando pago simulado: ${devError.message}`,
+            stack: devError.stack,
+          });
+        }
+
         return res.status(200).json({
           message: "Transacción simulada (desarrollo)",
           success: true,
-          transaction: {
-            x_ref_payco: reference,
-            x_amount: "10.00",
-            x_currency_code: "USD",
-            x_transaction_state: "1",
-            x_response_reason_text: "Aprobado",
-            x_cust_id_cliente: "dev-user",
-          },
+          transaction,
         });
       }
 

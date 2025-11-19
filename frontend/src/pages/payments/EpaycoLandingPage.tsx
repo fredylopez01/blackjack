@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Loader } from "lucide-react";
 import toast from "react-hot-toast";
+import { useAuthStore } from "../../store/authStore";
 
 export default function EpaycoLandingPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const user = useAuthStore((state) => state.user);
   const [isProcessing, setIsProcessing] = useState(true);
   const [debugInfo, setDebugInfo] = useState<string>("");
 
@@ -27,37 +29,46 @@ export default function EpaycoLandingPage() {
           return;
         }
 
+        if (!user?.id) {
+          console.error("No user ID found");
+          setDebugInfo("Error: Usuario no autenticado");
+          toast.error("Usuario no autenticado");
+          setTimeout(() => navigate("/profile"), 2000);
+          return;
+        }
+
         // Esperar un poco a que ePayco procese
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Consultar el estado del pago en nuestro backend (actualizado por el webhook)
-        console.log("Querying backend status for reference:", reference);
-        setDebugInfo(`Consultando estado para: ${reference}`);
+        // Consultar el estado del pago en ePayco Y acreditar saldo
+        console.log("Querying ePayco transaction for reference:", reference, "userId:", user.id);
+        setDebugInfo(`Consultando ePayco para: ${reference}`);
 
+        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/payments/epayco/status/${reference}`
+          `${apiUrl}/api/payments/epayco/query/${reference}?userId=${user.id}`
         );
 
-        console.log("Backend status response:", response.status);
+        console.log("ePayco query response:", response.status);
         const data = await response.json();
-        console.log("Backend status data:", data);
-        setDebugInfo(`Estado backend: ${JSON.stringify(data).substring(0, 120)}`);
+        console.log("ePayco query data:", data);
+        setDebugInfo(`Respuesta ePayco: ${JSON.stringify(data).substring(0, 120)}`);
 
-        if (data.success && data.data) {
-          const payment = data.data as any;
-          if (payment.approved) {
-            toast.success("¡Pago confirmado y balance actualizado!");
-            setTimeout(() => {
-              navigate("/profile", { state: { refreshProfile: true } });
-            }, 1500);
-          } else {
-            toast.error("Pago no aprobado");
-            setTimeout(() => navigate("/profile"), 2000);
-          }
+        if (data.success && data.approved) {
+          toast.success(`¡Pago confirmado! Nuevo balance: $${data.newBalance || data.user?.balance || "N/A"}`);
+          setTimeout(() => {
+            navigate("/profile", { state: { refreshProfile: true } });
+          }, 1500);
+        } else if (data.success && data.approved === false) {
+          toast.error("Pago no aprobado por ePayco");
+          setTimeout(() => navigate("/profile"), 2000);
+        } else if (data.success && data.alreadyApplied) {
+          toast.success("Pago ya procesado anteriormente");
+          setTimeout(() => navigate("/profile"), 1500);
         } else {
-          console.error("Payment status not found:", data);
-          setDebugInfo("Error: Estado de pago no encontrado");
-          toast.error("No se pudo obtener el estado del pago");
+          console.error("Payment query failed:", data);
+          setDebugInfo(`Error: ${data.message || "Estado desconocido"}`);
+          toast.error(data.message || "No se pudo obtener el estado del pago");
           setTimeout(() => navigate("/profile"), 2000);
         }
       } catch (error) {
@@ -71,7 +82,7 @@ export default function EpaycoLandingPage() {
     };
 
     processPayment();
-  }, [location.search, navigate]);
+  }, [location.search, navigate, user?.id]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-green-900 to-gray-900 flex items-center justify-center p-4">

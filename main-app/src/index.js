@@ -30,7 +30,7 @@ export const prisma = new PrismaClient();
 app.use(helmet());
 app.use(
   cors({
-    origin: [
+    origin: [ 
       "http://jack21.ddns.net",
       "http://206.189.76.177",
       "http://localhost:5173",

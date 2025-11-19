@@ -56,7 +56,7 @@ export async function openCheckout({
     currency: "USD",
     amount: usdAmount,
     country: "CO",
-    external: false,
+    external: true, // Redirigir directamente sin pasar por landingresume de ePayco
     // response: redirige a nuestra página landing que procesa el pago
     response: responseUrl,
     // confirmation: webhook para que ePayco notifique al backend
@@ -68,6 +68,8 @@ export async function openCheckout({
     customer: userId,
     // Evitar validaciones de IP
     test: true,
+    // Configuración adicional para evitar landingresume
+    methodsDisable: [],
   });
 }
 

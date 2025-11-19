@@ -23,6 +23,31 @@ services:
     restart: unless-stopped
 
   # ============================================
+  # POSTGRES (Base de datos local)
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: blackjack-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      DB_USER: ${DB_USER:-blackjack_user}
+      DB_PASSWORD: ${DB_PASSWORD:-blackjack_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-postgres.sh:/docker-entrypoint-initdb.d/init-postgres.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - blackjack-network
+    restart: unless-stopped
+
+  # ============================================
   # API LOGIN (Gestión de usuarios)
   # ============================================
   api-login:
@@ -79,7 +104,7 @@ services:
       MAIN_APP_URL: ${MAIN_APP_URL_1}
       JWT_SECRET: ${JWT_SECRET}
       SERVICE_KEY: ${SERVICE_KEY}
-      FRONTEND_URL: http://localhost
+      FRONTEND_URL: localhost
     ports:
       - "3002:3002"
     depends_on:
@@ -87,6 +112,8 @@ services:
         condition: service_healthy
       api-login:
         condition: service_started
+      postgres:
+        condition: service_healthy
     networks:
       - blackjack-network
     restart: unless-stopped
@@ -125,6 +152,11 @@ services:
       DB_RETRY_DELAY: ${DB_RETRY_DELAY:-5000}
       QUEUE_RETRY_MAX_ATTEMPTS: ${QUEUE_RETRY_MAX_ATTEMPTS:-5}
       QUEUE_RETRY_BASE_DELAY: ${QUEUE_RETRY_BASE_DELAY:-1000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - blackjack-network
     restart: unless-stopped
@@ -311,5 +343,6 @@ networks:
 
 volumes:
   rabbitmq_data:
+  postgres_data:
   prometheus_data:
   grafana_data:
