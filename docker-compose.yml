@@ -105,6 +105,114 @@ services:
       retries: 3
 
   # ============================================
+  # MAIN APP RÉPLICAS (Servidor local)
+  # ============================================
+  main-app-1:
+    build:
+      context: ./main-app
+      dockerfile: Dockerfile
+    container_name: blackjack-main-app-1
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${MAIN_APP_DATABASE_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-admin123}@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET}
+      GAME_ENGINE_URL: http://game-engine:3002
+      SERVICE_KEY: ${SERVICE_KEY}
+      DB_HEALTH_CHECK_INTERVAL: ${DB_HEALTH_CHECK_INTERVAL:-10000}
+      DB_RETRY_ATTEMPTS: ${DB_RETRY_ATTEMPTS:-3}
+      DB_RETRY_DELAY: ${DB_RETRY_DELAY:-5000}
+      QUEUE_RETRY_MAX_ATTEMPTS: ${QUEUE_RETRY_MAX_ATTEMPTS:-5}
+      QUEUE_RETRY_BASE_DELAY: ${QUEUE_RETRY_BASE_DELAY:-1000}
+    networks:
+      - blackjack-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3001/health",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  main-app-2:
+    build:
+      context: ./main-app
+      dockerfile: Dockerfile
+    container_name: blackjack-main-app-2
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${MAIN_APP_DATABASE_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-admin123}@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET}
+      GAME_ENGINE_URL: http://game-engine:3002
+      SERVICE_KEY: ${SERVICE_KEY}
+      DB_HEALTH_CHECK_INTERVAL: ${DB_HEALTH_CHECK_INTERVAL:-10000}
+      DB_RETRY_ATTEMPTS: ${DB_RETRY_ATTEMPTS:-3}
+      DB_RETRY_DELAY: ${DB_RETRY_DELAY:-5000}
+      QUEUE_RETRY_MAX_ATTEMPTS: ${QUEUE_RETRY_MAX_ATTEMPTS:-5}
+      QUEUE_RETRY_BASE_DELAY: ${QUEUE_RETRY_BASE_DELAY:-1000}
+    networks:
+      - blackjack-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3001/health",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  main-app-3:
+    build:
+      context: ./main-app
+      dockerfile: Dockerfile
+    container_name: blackjack-main-app-3
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${MAIN_APP_DATABASE_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-admin123}@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET}
+      GAME_ENGINE_URL: http://game-engine:3002
+      SERVICE_KEY: ${SERVICE_KEY}
+      DB_HEALTH_CHECK_INTERVAL: ${DB_HEALTH_CHECK_INTERVAL:-10000}
+      DB_RETRY_ATTEMPTS: ${DB_RETRY_ATTEMPTS:-3}
+      DB_RETRY_DELAY: ${DB_RETRY_DELAY:-5000}
+      QUEUE_RETRY_MAX_ATTEMPTS: ${QUEUE_RETRY_MAX_ATTEMPTS:-5}
+      QUEUE_RETRY_BASE_DELAY: ${QUEUE_RETRY_BASE_DELAY:-1000}
+    networks:
+      - blackjack-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3001/health",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  # ============================================
   # WORKER CONSUMER (Procesa cola de RabbitMQ)
   # ============================================
   worker-consumer:

@@ -86,8 +86,23 @@ echo ""
 echo "=== Nginx ==="
 docker-compose logs --tail=10 nginx
 
-# Obtener IP del servidor
-SERVER_IP=$(hostname -I | awk '{print $1}')
+# Verificar que el script se ejecuta en Linux (servidor)
+if [ "$(uname -s)" != "Linux" ]; then
+    print_error "Este script debe ejecutarse en el servidor Linux donde correrán los contenedores."
+    exit 1
+fi
+
+# Obtener IP del servidor (más robusto)
+if command -v hostname >/dev/null 2>&1; then
+    SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+fi
+if [ -z "$SERVER_IP" ]; then
+    # Fallback a route
+    SERVER_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '/src/ {print $7; exit}')
+fi
+if [ -z "$SERVER_IP" ]; then
+    SERVER_IP="localhost"
+fi
 
 # Resumen
 echo ""
@@ -104,6 +119,7 @@ echo "RABBITMQ ADMIN:    http://${SERVER_IP}:15672"
 echo "    Usuario: admin / Contraseña: admin123"
 echo "PROMETHEUS:        http://${SERVER_IP}:9090"
 echo "GRAFANA:           http://${SERVER_IP}:3010"
+echo "MAIN APP (a través de Nginx): http://${SERVER_IP}  # rutas /api proxied a las réplicas internas"
 echo "    Usuario: admin / Contraseña: admin123"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
