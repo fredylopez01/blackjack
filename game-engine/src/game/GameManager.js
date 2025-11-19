@@ -125,17 +125,46 @@ export class GameManager {
 
   /**
    * Obtiene información de salas activas
+   * Incluye salas registradas (roomConfigs) y salas con juegos activos
    */
   getActiveRooms() {
     const rooms = [];
+    const addedRooms = new Set();
 
+    // Primero agregar salas con juegos activos
     for (const [roomId, game] of this.games.entries()) {
+      const config = this.roomConfigs.get(roomId);
       rooms.push({
         roomId,
+        name: config?.name || `Room ${roomId.slice(0, 8)}`,
+        maxPlayers: config?.maxPlayers || 6,
+        minBet: config?.minBet || 10,
+        maxBet: config?.maxBet || 1000,
+        isPublic: config?.isPublic !== false,
+        createdBy: config?.createdBy,
         playerCount: game.getPlayerCount(),
-        status: game.getStatus(),
+        status: "waiting",
         currentRound: game.getCurrentRound(),
       });
+      addedRooms.add(roomId);
+    }
+
+    // Luego agregar salas registradas que NO tienen juego activo
+    for (const [roomId, config] of this.roomConfigs.entries()) {
+      if (!addedRooms.has(roomId)) {
+        rooms.push({
+          roomId,
+          name: config.name,
+          maxPlayers: config.maxPlayers,
+          minBet: config.minBet,
+          maxBet: config.maxBet,
+          isPublic: config.isPublic,
+          createdBy: config.createdBy,
+          playerCount: 0,
+          status: "waiting",
+          currentRound: 0,
+        });
+      }
     }
 
     return rooms;

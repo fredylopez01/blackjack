@@ -11,6 +11,7 @@ import {
   Clock,
   ChevronDown,
   ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import { historyAPI } from "../services/api";
 import toast from "react-hot-toast";
@@ -24,6 +25,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedGame, setExpandedGame] = useState<string | null>(null);
+  const [isDegraded, setIsDegraded] = useState(false);
 
   useEffect(() => {
     loadHistory();
@@ -34,13 +36,25 @@ export default function HistoryPage() {
       setLoading(true);
       const data = await historyAPI
         .getMyHistory(30)
-        .catch(() => ({ history: [] }));
-      const historyData: GameHistoryRecord[] = data.data.history;
+        .catch(() => ({ data: { history: [] } }));
+
+      const historyData = data.data.history;
+
+      if (data.mode === "degraded") {
+        setIsDegraded(true);
+        toast.loading(
+          "Modo degradado: datos del sistema de backup de game-engine",
+          { duration: 3000 }
+        );
+      } else {
+        setIsDegraded(false);
+      }
+
       historyData?.sort(
-        (a, b) =>
+        (a: any, b: any) =>
           new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
       );
-      setHistory(data.data.history || []);
+      setHistory(historyData || []);
     } catch (error) {
       console.error("Error loading history:", error);
       toast.error("Error cargando historial");
@@ -84,6 +98,23 @@ export default function HistoryPage() {
 
       <div className="p-4 md:p-8 mt-16 md:mt-0">
         <div className="max-w-6xl mx-auto">
+          {/* Degraded Mode Alert */}
+          {isDegraded && (
+            <div className="mb-6 p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg flex items-start gap-3">
+              <AlertTriangle
+                className="text-yellow-400 flex-shrink-0 mt-0.5"
+                size={20}
+              />
+              <div>
+                <p className="font-semibold text-yellow-300">Modo Degradado</p>
+                <p className="text-sm text-yellow-200 mt-1">
+                  Historial recuperado desde game-engine. Algunos datos pueden
+                  ser parciales.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-3">

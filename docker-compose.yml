@@ -1,39 +1,16 @@
-version: "3.8"
-
 services:
-  # PostgreSQL - Base de datos principal
-  postgres:
-    image: postgres:16-alpine
-    container_name: blackjack-postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "${POSTGRES_PORT}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-postgres.sh:/docker-entrypoint-initdb.d/init.sh
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - blackjack-network
-
-  # RabbitMQ - Cola de mensajes
+  # ============================================
+  # RABBITMQ
+  # ============================================
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: blackjack-rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-admin123}
     ports:
-      - "${RABBITMQ_PORT}:5672"
-      - "${RABBITMQ_MGMT_PORT}:15672"
+      - "5672:5672"
+      - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -43,135 +20,282 @@ services:
       retries: 5
     networks:
       - blackjack-network
+    restart: unless-stopped
 
-  # API Login - Servicio de autenticación
+  # ============================================
+  # API LOGIN (Gestión de usuarios)
+  # ============================================
   api-login:
     build:
       context: ./api-login-distribuidos
       dockerfile: Dockerfile
     container_name: blackjack-api-login
     environment:
-      NODE_ENV: ${NODE_ENV}
+      NODE_ENV: production
       PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 24h
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASS: ${EMAIL_PASS}
+      EMAIL_FROM: ${EMAIL_FROM}
+      SERVICE_KEY: ${SERVICE_KEY}
     ports:
-      - "${API_LOGIN_PORT}:3000"
+      - "3000:3000"
+    volumes:
+      - ./api-login-distribuidos/data:/app/data
     networks:
       - blackjack-network
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Main App - Aplicación principal
-  main-app:
-    build:
-      context: ./main-app
-      dockerfile: Dockerfile
-    container_name: blackjack-main-app
-    environment:
-      NODE_ENV: ${NODE_ENV}
-      PORT: 3001
-    ports:
-      - "${MAIN_APP_PORT}:3001"
-    networks:
-      - blackjack-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      api-login:
-        condition: service_started
-    command: sh -c "npm run prisma:deploy || true && npm start"
-    restart: unless-stopped
-
-  # Game Engine - Motor de juego
+  # ============================================
+  # GAME ENGINE (Lógica del juego)
+  # ============================================
   game-engine:
     build:
       context: ./game-engine
       dockerfile: Dockerfile
     container_name: blackjack-game-engine
     environment:
-      NODE_ENV: ${NODE_ENV}
+      NODE_ENV: production
       PORT: 3002
+      DATABASE_URL: ${GAME_ENGINE_DATABASE_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-admin123}@rabbitmq:5672
+      AUTH_API_URL: http://api-login:3000
+      MAIN_APP_URL: ${MAIN_APP_URL_1}
+      JWT_SECRET: ${JWT_SECRET}
+      SERVICE_KEY: ${SERVICE_KEY}
+      FRONTEND_URL: http://localhost
     ports:
-      - "${GAME_ENGINE_PORT}:3002"
-    networks:
-      - blackjack-network
+      - "3002:3002"
     depends_on:
-      postgres:
-        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       api-login:
         condition: service_started
-    command: sh -c "npm run prisma:deploy || true && npm start"
+    networks:
+      - blackjack-network
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3002/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Worker Consumer - Procesador de mensajes
+  # ============================================
+  # MAIN APP RÉPLICAS (Servidor local)
+  # ============================================
+  main-app-1:
+    build:
+      context: ./main-app
+      dockerfile: Dockerfile
+    container_name: blackjack-main-app-1
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${MAIN_APP_DATABASE_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-admin123}@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET}
+      GAME_ENGINE_URL: http://game-engine:3002
+      SERVICE_KEY: ${SERVICE_KEY}
+      DB_HEALTH_CHECK_INTERVAL: ${DB_HEALTH_CHECK_INTERVAL:-10000}
+      DB_RETRY_ATTEMPTS: ${DB_RETRY_ATTEMPTS:-3}
+      DB_RETRY_DELAY: ${DB_RETRY_DELAY:-5000}
+      QUEUE_RETRY_MAX_ATTEMPTS: ${QUEUE_RETRY_MAX_ATTEMPTS:-5}
+      QUEUE_RETRY_BASE_DELAY: ${QUEUE_RETRY_BASE_DELAY:-1000}
+    networks:
+      - blackjack-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3001/health",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  main-app-2:
+    build:
+      context: ./main-app
+      dockerfile: Dockerfile
+    container_name: blackjack-main-app-2
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${MAIN_APP_DATABASE_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-admin123}@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET}
+      GAME_ENGINE_URL: http://game-engine:3002
+      SERVICE_KEY: ${SERVICE_KEY}
+      DB_HEALTH_CHECK_INTERVAL: ${DB_HEALTH_CHECK_INTERVAL:-10000}
+      DB_RETRY_ATTEMPTS: ${DB_RETRY_ATTEMPTS:-3}
+      DB_RETRY_DELAY: ${DB_RETRY_DELAY:-5000}
+      QUEUE_RETRY_MAX_ATTEMPTS: ${QUEUE_RETRY_MAX_ATTEMPTS:-5}
+      QUEUE_RETRY_BASE_DELAY: ${QUEUE_RETRY_BASE_DELAY:-1000}
+    networks:
+      - blackjack-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3001/health",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  main-app-3:
+    build:
+      context: ./main-app
+      dockerfile: Dockerfile
+    container_name: blackjack-main-app-3
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${MAIN_APP_DATABASE_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-admin123}@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET}
+      GAME_ENGINE_URL: http://game-engine:3002
+      SERVICE_KEY: ${SERVICE_KEY}
+      DB_HEALTH_CHECK_INTERVAL: ${DB_HEALTH_CHECK_INTERVAL:-10000}
+      DB_RETRY_ATTEMPTS: ${DB_RETRY_ATTEMPTS:-3}
+      DB_RETRY_DELAY: ${DB_RETRY_DELAY:-5000}
+      QUEUE_RETRY_MAX_ATTEMPTS: ${QUEUE_RETRY_MAX_ATTEMPTS:-5}
+      QUEUE_RETRY_BASE_DELAY: ${QUEUE_RETRY_BASE_DELAY:-1000}
+    networks:
+      - blackjack-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3001/health",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  # ============================================
+  # WORKER CONSUMER (Procesa cola de RabbitMQ)
+  # ============================================
   worker-consumer:
     build:
       context: ./worker-consumer
       dockerfile: Dockerfile
     container_name: blackjack-worker-consumer
     environment:
-      NODE_ENV: ${NODE_ENV}
-      METRICS_PORT: 3003
-    ports:
-      - "3003:3003"
-    networks:
-      - blackjack-network
+      NODE_ENV: production
+      DATABASE_URL: ${MAIN_APP_DATABASE_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-admin123}@rabbitmq:5672
+      WORKER_RETRY_MAX_ATTEMPTS: 5
+      WORKER_RETRY_BASE_DELAY: 2000
     depends_on:
-      postgres:
-        condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    networks:
+      - blackjack-network
     restart: unless-stopped
 
-  # Frontend - Aplicación web
+  # ============================================
+  # FRONTEND (React App)
+  # ============================================
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL}
+        - VITE_AUTH_URL=${VITE_AUTH_URL}
+        - VITE_WS_URL=${VITE_WS_URL}
     container_name: blackjack-frontend
-    ports:
-      - "${FRONTEND_PORT}:80"
     networks:
       - blackjack-network
-    depends_on:
-      - api-login
-      - main-app
-      - game-engine
     restart: unless-stopped
 
-  # Prometheus - Recopilador de métricas
+  # ============================================
+  # NGINX (Reverse Proxy y Load Balancer)
+  # ============================================
+  nginx:
+    image: nginx:alpine
+    container_name: blackjack-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - api-login
+      - game-engine
+    networks:
+      - blackjack-network
+    restart: unless-stopped
+
+  # ============================================
+  # MONITOREO
+  # ============================================
   prometheus:
     image: prom/prometheus:latest
     container_name: blackjack-prometheus
     ports:
-      - "${PROMETHEUS_PORT}:9090"
+      - "9090:9090"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
     networks:
       - blackjack-network
     restart: unless-stopped
 
-  # Grafana - Visualización de métricas
   grafana:
     image: grafana/grafana:latest
     container_name: blackjack-grafana
     ports:
-      - "${GRAFANA_PORT}:3000"
+      - "3010:3000"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
-      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SERVER_ROOT_URL: http://localhost:3010
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
@@ -186,7 +310,6 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
   rabbitmq_data:
   prometheus_data:
   grafana_data:

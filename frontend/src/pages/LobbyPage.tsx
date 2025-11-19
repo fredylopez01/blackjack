@@ -6,21 +6,17 @@ import { roomsAPI } from "../services/api";
 import { socketService } from "../services/socketService";
 import toast from "react-hot-toast";
 import { CreateRoomModal } from "./CreateRoomModal";
-import { Globe, GlobeLock, Plus, RefreshCcw, RefreshCw } from "lucide-react";
+import {
+  Globe,
+  GlobeLock,
+  Plus,
+  RefreshCcw,
+  RefreshCw,
+  AlertTriangle,
+} from "lucide-react";
 import { EnterPasswordModal } from "./EnterPassword";
 import Navigation from "../components/Navigation";
-
-interface Room {
-  id: string;
-  name: string;
-  isPublic: boolean;
-  maxPlayers: number;
-  minBet: number;
-  maxBet: number;
-  status: string;
-  createdAt: string;
-  createdBy: string;
-}
+import { Room } from "../interfaces/Room";
 
 export default function LobbyPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -29,6 +25,7 @@ export default function LobbyPage() {
   const [showAddPassword, setShowAddPassword] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [isDegraded, setIsDegraded] = useState(false);
 
   const navigate = useNavigate();
   const { user, token } = useAuthStore();
@@ -49,9 +46,19 @@ export default function LobbyPage() {
     try {
       const data = await roomsAPI.list();
       setRooms(data.rooms || []);
+
+      if (data.mode === "degraded") {
+        setIsDegraded(true);
+        toast.loading(
+          "Modo degradado: mostrando salas en memoria de game-engine",
+          { duration: 3000 }
+        );
+      } else {
+        setIsDegraded(false);
+      }
     } catch (error) {
       console.error("Error loading rooms:", error);
-      toast.error("Failed to load rooms");
+      toast.error("Error al cargar las salas");
     } finally {
       setLoading(false);
     }
@@ -96,6 +103,23 @@ export default function LobbyPage() {
 
       <div className="p-4 md:p-8 mt-16 md:mt-0">
         <div className="max-w-7xl mx-auto">
+          {/* Degraded Mode Alert */}
+          {isDegraded && (
+            <div className="mb-6 p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg flex items-start gap-3">
+              <AlertTriangle
+                className="text-yellow-400 flex-shrink-0 mt-0.5"
+                size={20}
+              />
+              <div>
+                <p className="font-semibold text-yellow-300">Modo Degradado</p>
+                <p className="text-sm text-yellow-200 mt-1">
+                  La base de datos está temporalmente no disponible. Mostrando
+                  salas en memoria del servidor de juego.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2">
             {/* Header */}
             <div className="mb-8">
@@ -203,6 +227,8 @@ export default function LobbyPage() {
                   <button
                     className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() =>
+                      room.id &&
+                      room.createdBy &&
                       handleJoinRoom(room.id, room.isPublic, room.createdBy)
                     }
                     disabled={connecting}
