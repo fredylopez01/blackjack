@@ -1,19 +1,17 @@
 #!/bin/bash
 
 # Script de despliegue para Blackjack Distribuido
-# Uso: ./deploy.sh
-
 set -e
 
 echo "Iniciando despliegue de Blackjack..."
 
-# Colores para output
+# Colores
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Función para imprimir mensajes
 print_message() {
     echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $1"
 }
@@ -26,31 +24,35 @@ print_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-# Verificar que estamos en el directorio correcto
-if [ ! -f "docker-compose.yml" ]; then
-    print_error "docker-compose.yml no encontrado. Ejecuta este script desde el directorio raíz del proyecto."
-    exit 1
-fi
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
 
-# Verificar que existe .env
+# Verificar archivos necesarios
+print_message "Verificando archivos necesarios..."
+
 if [ ! -f ".env" ]; then
-    print_error "Archivo .env no encontrado."
-    print_message "Copia .env.production a .env y configúralo:"
-    print_message "  cp .env.production .env"
-    print_message "  nano .env"
+    print_error "Archivo .env no encontrado en la raíz del proyecto"
+    print_info "Crea el archivo .env con las variables necesarias"
     exit 1
 fi
 
-# Pull de cambios del repositorio
-print_message "Obteniendo últimos cambios del repositorio..."
-git pull origin main || print_warning "No se pudo hacer git pull (¿cambios locales?)"
+if [ ! -f "docker-compose.yml" ]; then
+    print_error "docker-compose.yml no encontrado"
+    exit 1
+fi
 
-# Detener contenedores anteriores
+if [ ! -f "nginx/nginx.conf" ]; then
+    print_error "nginx/nginx.conf no encontrado"
+    exit 1
+fi
+
+# Detener contenedores existentes
 print_message "Deteniendo contenedores existentes..."
-docker-compose down
+docker-compose down 2>/dev/null || true
 
-# Limpiar imágenes antiguas (opcional)
-print_message "Limpiando imágenes antiguas..."
+# Limpiar contenedores e imágenes huérfanas
+print_message "Limpiando contenedores e imágenes antiguas..."
 docker system prune -f
 
 # Construir imágenes
@@ -63,7 +65,7 @@ docker-compose up -d
 
 # Esperar a que los servicios estén listos
 print_message "Esperando que los servicios inicien..."
-sleep 10
+sleep 15
 
 # Verificar estado de los servicios
 print_message "Verificando estado de los servicios..."
@@ -72,28 +74,52 @@ docker-compose ps
 # Verificar logs de servicios críticos
 print_message "Últimos logs de servicios:"
 echo ""
+echo "=== Frontend ==="
+docker-compose logs --tail=10 frontend
+echo ""
 echo "=== API Login ==="
-docker-compose logs --tail=5 api-login
+docker-compose logs --tail=10 api-login
 echo ""
 echo "=== Game Engine ==="
-docker-compose logs --tail=5 game-engine
+docker-compose logs --tail=10 game-engine
 echo ""
 echo "=== Nginx ==="
-docker-compose logs --tail=5 nginx
+docker-compose logs --tail=10 nginx
+
+# Obtener IP del servidor
+SERVER_IP=$(hostname -I | awk '{print $1}')
 
 # Resumen
 echo ""
 print_message "Despliegue completado!"
 echo ""
-echo "Servicios disponibles:"
-echo "   - Frontend:       http://$(hostname -I | awk '{print $1}')"
-echo "   - RabbitMQ Admin: http://$(hostname -I | awk '{print $1}'):15672"
-echo "   - Prometheus:     http://$(hostname -I | awk '{print $1}'):9090"
-echo "   - Grafana:        http://$(hostname -I | awk '{print $1}'):3010"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "SERVICIOS DISPONIBLES"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Para ver logs en tiempo real:"
+echo "FRONTEND:          http://${SERVER_IP}"
+echo "API LOGIN:         http://${SERVER_IP}:3000"
+echo "GAME ENGINE:       http://${SERVER_IP}:3002"
+echo "RABBITMQ ADMIN:    http://${SERVER_IP}:15672"
+echo "    Usuario: admin / Contraseña: admin123"
+echo "PROMETHEUS:        http://${SERVER_IP}:9090"
+echo "GRAFANA:           http://${SERVER_IP}:3010"
+echo "    Usuario: admin / Contraseña: admin123"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "COMANDOS ÚTILES"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Ver logs en tiempo real:"
 echo "   docker-compose logs -f [servicio]"
 echo ""
-echo "Para reiniciar un servicio:"
+echo "Reiniciar un servicio:"
 echo "   docker-compose restart [servicio]"
 echo ""
+echo "Ver estado de servicios:"
+echo "   docker-compose ps"
+echo ""
+echo "Detener todos los servicios:"
+echo "   docker-compose down"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
