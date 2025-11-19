@@ -7,6 +7,8 @@ import GamePage from "./pages/GamePage";
 import RankingPage from "./pages/RankingPage";
 import HistoryPage from "./pages/HistoryPage";
 import ProfilePage from "./pages/ProfilePage";
+import EpaycoResponsePage from "./pages/payments/EpaycoResponsePage";
+import EpaycoLandingPage from "./pages/payments/EpaycoLandingPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -71,6 +73,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/payments/epayco/response"
+          element={
+            <ProtectedRoute>
+              <EpaycoResponsePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/payments/epayco/landing"
+          element={
+            <ProtectedRoute>
+              <EpaycoLandingPage />
             </ProtectedRoute>
           }
         />

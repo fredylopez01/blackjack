@@ -13,6 +13,7 @@ const path = require("path");
 const authRoutes = require("./src/routes/auth");
 const userRoutes = require("./src/routes/users");
 const passwordRoutes = require("./src/routes/password");
+const paymentRoutes = require("./src/routes/payments");
 
 // Importar servicios
 const { verifyConnection } = require("./src/services/emailService");
@@ -84,6 +85,7 @@ app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/password", passwordRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Ruta 404 - debe ir al final
 app.use((req, res) => {

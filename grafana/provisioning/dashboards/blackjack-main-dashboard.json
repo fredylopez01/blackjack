@@ -1,0 +1,271 @@
+{
+  "id": null,
+  "uid": "blackjack-main",
+  "title": "Blackjack - Observabilidad General",
+  "tags": ["blackjack", "production", "observability"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m"
+    ],
+    "time_options": [
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "job",
+        "label": "Servicio",
+        "type": "query",
+        "datasource": null,
+        "definition": "label_values(up, job)",
+        "query": "label_values(up, job)",
+        "refresh": 1,
+        "hide": 0,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "",
+        "current": {},
+        "sort": 1
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Eventos",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Servicios activos",
+      "description": "Cantidad de servicios de Blackjack actualmente UP según Prometheus",
+      "id": 1,
+      "datasource": null,
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "green", "value": 4}
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(up)",
+          "legendFormat": "Servicios UP"
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "Disponibilidad por servicio",
+      "description": "Estado UP/DOWN por servicio (jobs de Prometheus)",
+      "id": 2,
+      "datasource": null,
+      "gridPos": {"h": 5, "w": 18, "x": 6, "y": 0},
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "continuous-RdYlGn"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 0.5},
+              {"color": "green", "value": 1}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Disponibilidad en el tiempo",
+      "description": "Histórico de UP por servicio para detectar caídas intermitentes",
+      "id": 3,
+      "datasource": null,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 30,
+            "showPoints": "never"
+          },
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": 0}, {"color": "green", "value": 1}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom"},
+        "tooltip": {"mode": "multi", "sort": "none"}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=~\"$job\"}",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latencia de scrape por servicio",
+      "description": "Duración del scrape de Prometheus (scrape_duration_seconds)",
+      "id": 4,
+      "datasource": null,
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "showPoints": "never"
+          },
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 0.5},
+              {"color": "red", "value": 1}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom"},
+        "tooltip": {"mode": "multi", "sort": "none"}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "scrape_duration_seconds{job=~\"$job\"}",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "Muestras scrapeadas por servicio",
+      "description": "Cantidad de series que Prometheus recoge por scrape (scrape_samples_scraped)",
+      "id": 5,
+      "datasource": null,
+      "gridPos": {"h": 7, "w": 12, "x": 0, "y": 13},
+      "options": {
+        "displayMode": "lcd",
+        "orientation": "horizontal",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "continuous-BlPu"}
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "scrape_samples_scraped{job=~\"$job\"}",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Resumen rápido por servicio",
+      "description": "Vista tipo tabla de estado, latencia y muestras por job",
+      "id": 6,
+      "datasource": null,
+      "gridPos": {"h": 7, "w": 12, "x": 12, "y": 13},
+      "fieldConfig": {"defaults": {"color": {"mode": "none"}}, "overrides": []},
+      "options": {"showHeader": true},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=~\"$job\"}",
+          "legendFormat": "{{job}}",
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "expr": "scrape_duration_seconds{job=~\"$job\"}",
+          "legendFormat": "duration",
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "expr": "scrape_samples_scraped{job=~\"$job\"}",
+          "legendFormat": "samples",
+          "format": "table"
+        }
+      ]
+    }
+  ]
+}
